@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 23a71d3415eb5734fbc88a29a9d67f6d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288737
+  packageName: Ultimate Editor Enhancer
+  packageVersion: 4.1
+  assetPath: Assets/Plugins/Infinity Code/Ultimate Editor Enhancer/Scripts/Editor/Project/OddEven.cs
+  uploadId: 704833

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 815afd2c649f78941970bff9544e64be
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288737
+  packageName: Ultimate Editor Enhancer
+  packageVersion: 4.1
+  assetPath: Assets/Plugins/Infinity Code/Ultimate Editor Enhancer/LocalResources/ScriptTemplates/Jobs/Jobs
+    IJobParallelFor-NewJob.cs.txt
+  uploadId: 704833

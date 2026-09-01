@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 174fb4f71c55faa4dab46ede0c534076
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288737
+  packageName: Ultimate Editor Enhancer
+  packageVersion: 4.1
+  assetPath: Assets/Plugins/Infinity Code/Ultimate Editor Enhancer/LocalResources/ScriptTemplates/C#
+    Script-NewBehaviourScript.cs.txt
+  uploadId: 704833

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 9752ec05f229f26439e798c419d919d3
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288737
+  packageName: Ultimate Editor Enhancer
+  packageVersion: 4.1
+  assetPath: Assets/Plugins/Infinity Code/Ultimate Editor Enhancer/LocalResources/ScriptTemplates/Jobs/Jobs
+    IJobParallelForTransform Burst-NewJob.cs.txt
+  uploadId: 704833

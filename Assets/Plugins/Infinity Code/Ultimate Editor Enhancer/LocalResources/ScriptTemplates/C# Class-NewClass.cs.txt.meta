@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f2891f9f4f340a14f9ca39511c79c079
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288737
+  packageName: Ultimate Editor Enhancer
+  packageVersion: 4.1
+  assetPath: Assets/Plugins/Infinity Code/Ultimate Editor Enhancer/LocalResources/ScriptTemplates/C#
+    Class-NewClass.cs.txt
+  uploadId: 704833

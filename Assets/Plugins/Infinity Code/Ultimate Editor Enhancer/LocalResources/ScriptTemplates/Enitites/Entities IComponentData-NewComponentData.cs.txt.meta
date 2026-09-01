@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 5f83d2fdc11ad9649b3c7fae8d1b3374
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288737
+  packageName: Ultimate Editor Enhancer
+  packageVersion: 4.1
+  assetPath: Assets/Plugins/Infinity Code/Ultimate Editor Enhancer/LocalResources/ScriptTemplates/Enitites/Entities
+    IComponentData-NewComponentData.cs.txt
+  uploadId: 704833
