@@ -1,53 +1,42 @@
 using System;
-using UnityEngine;
-using UnityEngine.InputSystem;
 using GameCreator.Runtime.Common;
+using UnityEngine;
 
 [Title("Right Screen Drag")]
 [Category("Mobile/Right Screen Drag")]
+[Description("Reads camera rotation from a dedicated UI drag area")]
 [Serializable]
 public class InputValueVector2MobileRightDrag : TInputValueVector2
 {
     [SerializeField] private float sensitivity = 0.08f;
+    [SerializeField] private bool invertVertical = true;
 
-    [NonSerialized] private int touchId = -1;
     [NonSerialized] private Vector2 value;
+
+    public override void OnStartup()
+    {
+        value = Vector2.zero;
+        RightScreenDragArea.ClearInput();
+    }
+
+    public override void OnDispose()
+    {
+        value = Vector2.zero;
+        RightScreenDragArea.ClearInput();
+    }
 
     public override void OnUpdate()
     {
-        value = Vector2.zero;
+        Vector2 delta = RightScreenDragArea.ConsumeDelta() * sensitivity;
 
-        Touchscreen screen = Touchscreen.current;
-        if (screen == null) return;
-
-        if (touchId < 0)
-        {
-            foreach (var touch in screen.touches)
-            {
-                if (touch.press.wasPressedThisFrame &&
-                    touch.position.ReadValue().x >= Screen.width * 0.5f)
-                {
-                    touchId = touch.touchId.ReadValue();
-                    break;
-                }
-            }
-        }
-
-        foreach (var touch in screen.touches)
-        {
-            if (touch.touchId.ReadValue() != touchId) continue;
-
-            if (!touch.press.isPressed)
-            {
-                touchId = -1;
-                return;
-            }
-
-            Vector2 delta = touch.delta.ReadValue() * sensitivity;
-            value = new Vector2(delta.x, -delta.y);
-            return;
-        }
+        value = new Vector2(
+            delta.x,
+            invertVertical ? -delta.y : delta.y
+        );
     }
 
-    public override Vector2 Read() => value;
+    public override Vector2 Read()
+    {
+        return value;
+    }
 }

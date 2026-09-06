@@ -1,4 +1,4 @@
-using System.Collections;
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -211,6 +211,11 @@ public class LightBrushPuzzle : MonoBehaviour
             return null;
         }
 
+        if (!IsValidScreenPosition(screenPosition))
+        {
+            return null;
+        }
+
         Ray ray = puzzleCamera.ScreenPointToRay(screenPosition);
 
         if (!Physics.Raycast(
@@ -233,6 +238,19 @@ public class LightBrushPuzzle : MonoBehaviour
         }
 
         return null;
+    }
+
+    private bool IsValidScreenPosition(Vector2 screenPosition)
+    {
+        if (float.IsNaN(screenPosition.x) ||
+            float.IsNaN(screenPosition.y) ||
+            float.IsInfinity(screenPosition.x) ||
+            float.IsInfinity(screenPosition.y))
+        {
+            return false;
+        }
+
+        return puzzleCamera.pixelRect.Contains(screenPosition);
     }
 
     private void GetConnectionPoints(
