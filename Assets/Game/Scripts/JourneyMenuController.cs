@@ -38,10 +38,13 @@ public sealed class JourneyMenuController : MonoBehaviour
     private bool capturedPlayerControl;
     private bool previousPlayerControl;
     private bool started;
+    private JourneyUIFeedback feedback;
     private GameObject currentPanel;
 
     private void Awake()
     {
+        feedback = GetComponent<JourneyUIFeedback>();
+        if (feedback == null) feedback = gameObject.AddComponent<JourneyUIFeedback>();
         if (!ValidateReferences()) enabled = false;
     }
 
@@ -110,6 +113,7 @@ public sealed class JourneyMenuController : MonoBehaviour
         levelsPanel.SetActive(false);
         settingPanel.SetActive(false);
         currentPanel = null;
+        if (feedback != null) feedback.StopMenuMusic();
         RestoreGameplayInput();
     }
 
@@ -134,6 +138,7 @@ public sealed class JourneyMenuController : MonoBehaviour
         levelsPanel.SetActive(target == levelsPanel);
         settingPanel.SetActive(target == settingPanel);
         target.transform.SetAsLastSibling();
+        if (feedback != null) feedback.ShowMenuMusic(target == levelsPanel);
 
         if (!IsMenuOpen)
         {
@@ -254,11 +259,44 @@ public sealed class JourneyMenuController : MonoBehaviour
 
     private void BindButtons(bool add)
     {
-        Bind(startButton, ShowLevels, add);
-        Bind(settingButton, ShowSettings, add);
-        Bind(exitButton, QuitGame, add);
-        Bind(levelsBackButton, ShowMainMenu, add);
-        Bind(settingBackButton, ShowMainMenu, add);
+        Bind(startButton, OnStartClicked, add);
+        Bind(settingButton, OnSettingsClicked, add);
+        Bind(exitButton, OnExitClicked, add);
+        Bind(levelsBackButton, OnLevelsBackClicked, add);
+        Bind(settingBackButton, OnSettingsBackClicked, add);
+    }
+
+    private void OnStartClicked()
+    {
+        PlayClick(startButton, JourneyUIFeedback.ButtonSound.Start, ShowLevels);
+    }
+
+    private void OnSettingsClicked()
+    {
+        PlayClick(settingButton, JourneyUIFeedback.ButtonSound.Settings, ShowSettings);
+    }
+
+    private void OnExitClicked()
+    {
+        PlayClick(exitButton, JourneyUIFeedback.ButtonSound.Exit, QuitGame);
+    }
+
+    private void OnLevelsBackClicked()
+    {
+        PlayClick(levelsBackButton, JourneyUIFeedback.ButtonSound.Back, ShowMainMenu);
+    }
+
+    private void OnSettingsBackClicked()
+    {
+        PlayClick(settingBackButton, JourneyUIFeedback.ButtonSound.Back, ShowMainMenu);
+    }
+
+    private void PlayClick(Button button, JourneyUIFeedback.ButtonSound sound, global::System.Action action)
+    {
+        if (feedback != null && feedback.isActiveAndEnabled)
+            feedback.PlayButton(button, sound, action);
+        else
+            action?.Invoke();
     }
 
     private static void Bind(Button button, UnityAction action, bool add)

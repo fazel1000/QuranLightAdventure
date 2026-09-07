@@ -20,9 +20,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
     [SerializeField, Range(1, 5)] private int starsRequiredToUnlockNext = 3;
     [SerializeField] private string progressKey = "JourneyOfLight.Chapter1.v1";
 
-    [Header("Horizontal Row (configured automatically)")]
-    [Tooltip("Displayed size in Canvas units; reduced only when needed to fit the Viewport.")]
-    [SerializeField, Min(1f)] private float buttonSize = 600f;
+    [Header("Horizontal Row - size comes from the prefab")]
     [SerializeField, Min(0f)] private float spacing = 60f;
     [SerializeField, Min(0)] private int padding = 30;
     [SerializeField] private bool rightToLeft = true;
@@ -36,8 +34,8 @@ public sealed class JourneyLevelsController : MonoBehaviour
 
     private static readonly string[] LevelTitles =
     {
-        "مرحلهٔ یک", "مرحلهٔ دو", "مرحلهٔ سه", "مرحلهٔ چهار", "مرحلهٔ پنج",
-        "مرحلهٔ شش", "مرحلهٔ هفت", "مرحلهٔ هشت", "مرحلهٔ نه", "مرحلهٔ ده"
+        "مرحله یک", "مرحله دو", "مرحله سه", "مرحله چهار", "مرحله پنج",
+        "مرحله شش", "مرحله هفت", "مرحله هشت", "مرحله نه", "مرحله ده"
     };
 
     private sealed class LevelView
@@ -45,6 +43,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
         public global::UnityEngine.UI.Button Button;
         public RectTransform Rect;
         public Vector2 OriginalSize;
+        public Vector3 OriginalScale;
         public GameObject LockIcon;
         public global::UnityEngine.Events.UnityAction ClickAction;
     }
@@ -58,6 +57,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
     private bool[] sceneTemplateActiveStates;
     private int[] bestStars;
     private bool initialized;
+    private JourneyUIFeedback feedback;
     private bool wasVisible;
     private Vector2 lastViewportSize = new Vector2(-1f, -1f);
     private Vector4 lastLayoutSettings;
@@ -66,7 +66,6 @@ public sealed class JourneyLevelsController : MonoBehaviour
     {
         levelCount = Mathf.Clamp(levelCount, 1, LevelTitles.Length);
         starsRequiredToUnlockNext = Mathf.Clamp(starsRequiredToUnlockNext, 1, 5);
-        buttonSize = Mathf.Max(1f, buttonSize);
         spacing = Mathf.Max(0f, spacing);
         padding = Mathf.Max(0, padding);
 
@@ -75,6 +74,9 @@ public sealed class JourneyLevelsController : MonoBehaviour
             enabled = false;
             return;
         }
+
+        feedback = GetComponent<JourneyUIFeedback>();
+        if (feedback == null) feedback = gameObject.AddComponent<JourneyUIFeedback>();
 
         LoadProgress();
         HideSceneTemplates();
@@ -233,7 +235,6 @@ public sealed class JourneyLevelsController : MonoBehaviour
             int levelNumber = index + 1;
             GameObject instance = Instantiate(levelButtonPrefab, content, false);
             instance.name = "LevelButton_" + levelNumber.ToString("00");
-            instance.transform.localScale = Vector3.one;
             instance.transform.localRotation = Quaternion.identity;
 
             global::UnityEngine.UI.Button button =
@@ -267,6 +268,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
                 OriginalSize = new Vector2(
                     Mathf.Max(1f, instanceRect.rect.width),
                     Mathf.Max(1f, instanceRect.rect.height)),
+                OriginalScale = instanceRect.localScale,
                 LockIcon = lockIcon,
                 ClickAction = clickAction
             };
@@ -295,7 +297,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
             float.IsNaN(viewportSize.y) || float.IsInfinity(viewportSize.y) ||
             viewportSize.x <= 0f || viewportSize.y <= 0f) return;
 
-        Vector4 layoutSettings = new Vector4(buttonSize, spacing, padding, rightToLeft ? 1f : 0f);
+        Vector4 layoutSettings = new Vector4(0f, spacing, padding, rightToLeft ? 1f : 0f);
         if (!wasVisible || (viewportSize - lastViewportSize).sqrMagnitude > 0.25f ||
             layoutSettings != lastLayoutSettings)
         {
@@ -317,37 +319,39 @@ public sealed class JourneyLevelsController : MonoBehaviour
 
     private void ApplyButtonLayout(Vector2 viewportSize)
     {
-        float inset = Mathf.Min(Mathf.Max(0, padding),
-            Mathf.Max(0f, (Mathf.Min(viewportSize.x, viewportSize.y) - 1f) * 0.5f));
+        float inset = Mathf.Max(0, padding);
         float gap = Mathf.Max(0f, spacing);
-        float available = Mathf.Max(1f, Mathf.Min(viewportSize.x, viewportSize.y) - inset * 2f);
-        float size = Mathf.Min(Mathf.Max(1f, buttonSize), available);
 
-        // A single row never wraps. Extra cards extend the scrollable width.
-        float rowWidth = views.Length * size + (views.Length - 1) * gap;
+        // Use each prefab's actual width and scale, without fitting it to the viewport.
+        float rowWidth = Mathf.Max(0, views.Length - 1) * gap;
+        foreach (LevelView view in views)
+        {
+            if (view.Rect != null)
+                rowWidth += view.OriginalSize.x * Mathf.Abs(view.OriginalScale.x);
+        }
+
         float contentWidth = Mathf.Max(viewportSize.x, rowWidth + inset * 2f);
         float left = (contentWidth - rowWidth) * 0.5f;
         content.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, contentWidth);
+        float offset = 0f;
 
-        for (int index = 0; index < views.Length; index++)
+        foreach (LevelView view in views)
         {
-            LevelView view = views[index];
             RectTransform rect = view.Rect;
             if (rect == null) continue;
 
+            float width = view.OriginalSize.x * Mathf.Abs(view.OriginalScale.x);
             float x = rightToLeft
-                ? left + rowWidth - size * 0.5f - index * (size + gap)
-                : left + size * 0.5f + index * (size + gap);
+                ? left + rowWidth - offset - width * 0.5f
+                : left + offset + width * 0.5f;
 
             rect.anchorMin = new Vector2(0f, 0.5f);
             rect.anchorMax = new Vector2(0f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
-
-            // Scale the complete prefab so its title and lock grow together.
+            // Preserve the prefab dimensions after changing the positioning anchors.
             rect.sizeDelta = view.OriginalSize;
-            rect.localScale = Vector3.one *
-                (size / Mathf.Max(view.OriginalSize.x, view.OriginalSize.y));
             rect.anchoredPosition = new Vector2(x, 0f);
+            offset += width + gap;
         }
     }
 
@@ -383,6 +387,16 @@ public sealed class JourneyLevelsController : MonoBehaviour
         // Check the lock here as well as Button.interactable.
         if (!IsLevelUnlocked(levelNumber)) return;
 
+        if (feedback != null && feedback.isActiveAndEnabled)
+            feedback.PlayButton(views[levelNumber - 1].Button, JourneyUIFeedback.ButtonSound.Level,
+                () => FinishLevelSelection(levelNumber));
+        else
+            FinishLevelSelection(levelNumber);
+    }
+
+    private void FinishLevelSelection(int levelNumber)
+    {
+        if (!IsLevelUnlocked(levelNumber)) return;
         SelectedLevelNumber = levelNumber;
         Debug.Log("Journey of Light: selected level " + levelNumber, this);
         onLevelSelected?.Invoke(levelNumber);
