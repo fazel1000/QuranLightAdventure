@@ -3,7 +3,7 @@ using UnityEngine;
 
 // Attach to the always-active MenuManager, alongside JourneyMenuController.
 // Assign the ScrollRect and the LevelButton prefab asset from the Project window.
-// The prefab needs direct children named LevelTitle (RTLTMP) and LockIcon (Image).
+// The prefab needs direct children: LevelTitle (RTLTMP), LockIcon (Image), StarsDisplay (Image).
 [DisallowMultipleComponent]
 [DefaultExecutionOrder(1100)]
 public sealed class JourneyLevelsController : MonoBehaviour
@@ -14,6 +14,14 @@ public sealed class JourneyLevelsController : MonoBehaviour
     [Header("References")]
     [SerializeField] private global::UnityEngine.UI.ScrollRect levelsScrollView;
     [SerializeField] private GameObject levelButtonPrefab;
+
+    [Header("Stars - drag the six complete star-row sprites")]
+    [SerializeField] private Sprite zeroStars;
+    [SerializeField] private Sprite oneStar;
+    [SerializeField] private Sprite twoStars;
+    [SerializeField] private Sprite threeStars;
+    [SerializeField] private Sprite fourStars;
+    [SerializeField] private Sprite fiveStars;
 
     [Header("Levels")]
     [SerializeField, Range(1, 10)] private int levelCount = 10;
@@ -45,6 +53,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
         public Vector2 OriginalSize;
         public Vector3 OriginalScale;
         public GameObject LockIcon;
+        public global::UnityEngine.UI.Image StarsImage;
         public global::UnityEngine.Events.UnityAction ClickAction;
     }
 
@@ -113,6 +122,14 @@ public sealed class JourneyLevelsController : MonoBehaviour
         Transform lockIcon = levelButtonPrefab.transform.Find("LockIcon");
         if (lockIcon == null || lockIcon.GetComponent<global::UnityEngine.UI.Image>() == null)
             return SetupError("The prefab needs a direct child LockIcon with an Image component.");
+
+        Transform stars = levelButtonPrefab.transform.Find("StarsDisplay");
+        if (stars == null || stars.GetComponent<global::UnityEngine.UI.Image>() == null)
+            return SetupError("The prefab needs a direct child StarsDisplay with an Image component.");
+
+        if (zeroStars == null || oneStar == null || twoStars == null ||
+            threeStars == null || fourStars == null || fiveStars == null)
+            return SetupError("Assign all six Stars sprites, from Zero Stars to Five Stars.");
 
         if (string.IsNullOrWhiteSpace(progressKey))
             return SetupError("Progress Key cannot be empty.");
@@ -244,6 +261,14 @@ public sealed class JourneyLevelsController : MonoBehaviour
             global::RTLTMPro.RTLTextMeshPro title =
                 instance.transform.Find("LevelTitle").GetComponent<global::RTLTMPro.RTLTextMeshPro>();
             GameObject lockIcon = instance.transform.Find("LockIcon").gameObject;
+            global::UnityEngine.UI.Image starsImage = instance.transform.Find("StarsDisplay")
+                .GetComponent<global::UnityEngine.UI.Image>();
+            // Keep the position and size authored in the prefab.
+            starsImage.raycastTarget = false;
+            starsImage.preserveAspect = true;
+            starsImage.type = global::UnityEngine.UI.Image.Type.Simple;
+            starsImage.enabled = true;
+            starsImage.gameObject.SetActive(true);
 
             background.raycastTarget = true;
             button.targetGraphic = background;
@@ -270,6 +295,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
                     Mathf.Max(1f, instanceRect.rect.height)),
                 OriginalScale = instanceRect.localScale,
                 LockIcon = lockIcon,
+                StarsImage = starsImage,
                 ClickAction = clickAction
             };
 
@@ -437,6 +463,21 @@ public sealed class JourneyLevelsController : MonoBehaviour
             bool unlocked = IsLevelUnlocked(index + 1);
             view.Button.interactable = unlocked;
             if (view.LockIcon != null) view.LockIcon.SetActive(!unlocked);
+            if (view.StarsImage != null)
+                view.StarsImage.sprite = GetStarsSprite(GetBestStars(index + 1));
+        }
+    }
+
+    private Sprite GetStarsSprite(int stars)
+    {
+        switch (Mathf.Clamp(stars, 0, 5))
+        {
+            case 1: return oneStar;
+            case 2: return twoStars;
+            case 3: return threeStars;
+            case 4: return fourStars;
+            case 5: return fiveStars;
+            default: return zeroStars;
         }
     }
 

@@ -1,4 +1,3 @@
-
 using System.Collections;
 using DG.Tweening;
 using UnityEngine;
@@ -66,7 +65,7 @@ public sealed class JourneyUIFeedback : MonoBehaviour
 
     // Returns false while another accepted click is finishing.
     // Uses only unscaled timing so menus also work while gameplay is paused.
-    public bool PlayButton(Button button, ButtonSound sound, Action onFinished)
+    public bool PlayButton(Button button, ButtonSound sound, global::System.Action onFinished)
     {
         if (IsBusy || !isActiveAndEnabled || button == null ||
             !button.isActiveAndEnabled || !button.IsInteractable()) return false;
@@ -76,7 +75,7 @@ public sealed class JourneyUIFeedback : MonoBehaviour
         return true;
     }
 
-    private IEnumerator AnimateClick(Button button, ButtonSound sound, Action onFinished)
+    private IEnumerator AnimateClick(Button button, ButtonSound sound, global::System.Action onFinished)
     {
         AudioClip clip = GetSound(sound);
         if (clip != null && buttonAudioSource != null)
