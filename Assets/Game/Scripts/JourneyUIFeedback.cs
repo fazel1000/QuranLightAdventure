@@ -1,4 +1,4 @@
-using System;
+
 using System.Collections;
 using DG.Tweening;
 using UnityEngine;
@@ -57,9 +57,11 @@ public sealed class JourneyUIFeedback : MonoBehaviour
         buttonAudioSource.playOnAwake = false;
         buttonAudioSource.loop = false;
         buttonAudioSource.spatialBlend = 0f;
+        buttonAudioSource.ignoreListenerPause = true;
         musicAudioSource.playOnAwake = false;
         musicAudioSource.loop = true;
         musicAudioSource.spatialBlend = 0f;
+        musicAudioSource.ignoreListenerPause = true;
     }
 
     // Returns false while another accepted click is finishing.
