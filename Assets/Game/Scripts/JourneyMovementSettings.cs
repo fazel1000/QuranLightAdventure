@@ -156,7 +156,7 @@ public sealed class JourneyMovementSettings : MonoBehaviour
 
     private bool GameplayAllowsInput()
     {
-        return initialized && hasFocus && !isPaused && !isQuitting &&
+        return !LightBrushPuzzle.IsMovementBlocked && initialized && hasFocus && !isPaused && !isQuitting &&
             Time.timeScale > 0f && menu != null && !menu.IsMenuOpen;
     }
 
@@ -271,9 +271,17 @@ public sealed class JourneyMovementSettings : MonoBehaviour
         movement = Vector2.zero;
     }
 
+    internal static void RefreshPuzzleInput()
+    {
+        if (instance == null) return;
+        instance.ResetDrag();
+        instance.RefreshControls();
+    }
+
     internal static bool TryReadMovement(out Vector2 value)
     {
         value = Vector2.zero;
+        if (LightBrushPuzzle.IsMovementBlocked) return true;
         if (instance == null || !instance.isActiveAndEnabled) return false;
 
         if (!instance.GameplayAllowsInput())

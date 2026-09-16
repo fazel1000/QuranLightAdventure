@@ -20,6 +20,12 @@ public sealed class RightScreenDragArea : MonoBehaviour,
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (LightBrushPuzzle.IsMovementBlocked)
+        {
+            ClearInput();
+            return;
+        }
+
         if (activePointerId != NoPointer) return;
 
         activePointerId = eventData.pointerId;
@@ -28,6 +34,12 @@ public sealed class RightScreenDragArea : MonoBehaviour,
 
     public void OnDrag(PointerEventData eventData)
     {
+        if (LightBrushPuzzle.IsMovementBlocked)
+        {
+            ClearInput();
+            return;
+        }
+
         if (eventData.pointerId != activePointerId) return;
         accumulatedDelta += eventData.delta;
     }
@@ -45,6 +57,12 @@ public sealed class RightScreenDragArea : MonoBehaviour,
 
     public static Vector2 ConsumeDelta()
     {
+        if (LightBrushPuzzle.IsMovementBlocked)
+        {
+            ClearInput();
+            return Vector2.zero;
+        }
+
         Vector2 result = accumulatedDelta;
         accumulatedDelta = Vector2.zero;
         return result;

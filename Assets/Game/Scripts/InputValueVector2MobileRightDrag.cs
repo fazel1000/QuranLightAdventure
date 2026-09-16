@@ -37,6 +37,11 @@ public class InputValueVector2MobileRightDrag : TInputValueVector2
 
     public override Vector2 Read()
     {
+        if (LightBrushPuzzle.IsMovementBlocked)
+        {
+            value = Vector2.zero;
+            RightScreenDragArea.ClearInput();
+        }
         return value;
     }
 }

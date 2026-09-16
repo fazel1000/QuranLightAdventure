@@ -4,14 +4,51 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
+using UnityEngine.Serialization;
 
+[DefaultExecutionOrder(-2000)]
 [RequireComponent(typeof(LineRenderer))]
 public class LightBrushPuzzle : MonoBehaviour
 {
     [Header("Puzzle")]
     [SerializeField] private Camera puzzleCamera;
-    [SerializeField] private Transform[] orderedLetters;
     [SerializeField] private LayerMask letterLayer;
+
+    [Header("Surah Al-Ikhlas")]
+    [Tooltip("All assigned puzzles are visible and can be solved in any order. Off uses only Bismillah.")]
+    [FormerlySerializedAs("enableIkhlasSequence")]
+    [SerializeField] private bool enableIkhlasPuzzles;
+
+    [Header("Bismillah - 4 words")]
+    [FormerlySerializedAs("orderedLetters")]
+    [SerializeField] private Transform[] bismillahWords;
+
+    [Header("Ayah 1 - Qul Huwa Allahu Ahad - 4 words")]
+    [SerializeField] private Transform[] ayah1Words = new Transform[4];
+    [Header("Ayah 2 - Allahu As-Samad - 2 words")]
+    [SerializeField] private Transform[] ayah2Words = new Transform[2];
+    [Header("Ayah 3 - Lam Yalid Wa Lam Yulad - 4 words")]
+    [SerializeField] private Transform[] ayah3Words = new Transform[4];
+    [Header("Ayah 4 - Wa Lam Yakun Lahu Kufuwan Ahad - 5 words")]
+    [SerializeField] private Transform[] ayah4Words = new Transform[5];
+
+    [Header("Score Per Puzzle")]
+    [SerializeField, Min(0)] private int bismillahScore = 10;
+    [SerializeField, Min(0)] private int ayah1Score = 10;
+    [SerializeField, Min(0)] private int ayah2Score = 10;
+    [SerializeField, Min(0)] private int ayah3Score = 10;
+    [SerializeField, Min(0)] private int ayah4Score = 10;
+
+    [Header("Score UI")]
+    [SerializeField] private global::RTLTMPro.RTLTextMeshPro scoreText;
+    [SerializeField] private string scorePrefix = "امتیاز: ";
+    [SerializeField] private bool usePersianDigits = true;
+    [SerializeField] private UnityEvent<int> onScoreChanged = new UnityEvent<int>();
+
+    [global::System.Serializable]
+    public sealed class PuzzleFinishedEvent : UnityEvent<int> { }
+    [Header("Each Puzzle Finished (1 = Bismillah, 5 = Ayah 4)")]
+    [SerializeField] private PuzzleFinishedEvent onPuzzleCompleted = new PuzzleFinishedEvent();
 
     [Header("Light Line")]
     [SerializeField] private Color glowColor = new Color(0.05f, 0.85f, 1f, 0.42f);
@@ -31,11 +68,13 @@ public class LightBrushPuzzle : MonoBehaviour
     [Header("Success")]
     [SerializeField] private ParticleSystem successEffectPrefab;
     [SerializeField, Min(0f)] private float successEffectHeight = 0.8f;
+    [Tooltip("Invoked once when all configured puzzles have been solved, in any order.")]
     [SerializeField] private UnityEvent onCompleted;
 
     private sealed class LightSegment
     {
         public GameObject Root;
+        public int PuzzleIndex;
         public LineRenderer Glow;
         public LineRenderer Core;
     }
@@ -52,6 +91,104 @@ public class LightBrushPuzzle : MonoBehaviour
     private bool drawing;
     private bool completed;
     private int currentLetter;
+    private Transform[][] wordGroups;
+    private int puzzleIndex;
+    private bool configurationValid;
+    private int runVersion;
+    private bool[] solvedPuzzles;
+    private bool[] playablePuzzles;
+    public int TotalScore { get; private set; }
+    public int SolvedPuzzleCount { get; private set; }
+    public bool IsAllPuzzlesCompleted => IsSequenceCompleted;
+    private readonly List<GameObject> transientEffects = new List<GameObject>();
+    public int CurrentPuzzleNumber => puzzleIndex + 1;
+    public bool IsSequenceCompleted { get; private set; }
+    private Transform[] ActiveWords => wordGroups[puzzleIndex];
+
+    private static readonly HashSet<LightBrushPuzzle> movementBlockers =
+        new HashSet<LightBrushPuzzle>();
+    private readonly HashSet<int> puzzleTouches = new HashSet<int>();
+    private readonly HashSet<int> heldTouches = new HashSet<int>();
+    private bool puzzleMouseHeld;
+    private bool inputFocused = true;
+    private bool inputPaused;
+
+    public static bool IsMovementBlocked => movementBlockers.Count > 0;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetMovementBlockers()
+    {
+        movementBlockers.Clear();
+    }
+
+    private void UpdateMovementBlock()
+    {
+        if (!configurationValid || !inputFocused || inputPaused)
+        {
+            ReleaseMovementBlock();
+            return;
+        }
+
+        heldTouches.Clear();
+        bool anyTouchHeld = false;
+        if (Touchscreen.current != null)
+        {
+            foreach (var touch in Touchscreen.current.touches)
+            {
+                if (!touch.press.isPressed) continue;
+                anyTouchHeld = true;
+                int id = touch.touchId.ReadValue();
+                heldTouches.Add(id);
+                if (touch.press.wasPressedThisFrame && HitLetter(touch.position.ReadValue()) != null)
+                    puzzleTouches.Add(id);
+            }
+        }
+        puzzleTouches.IntersectWith(heldTouches);
+
+        var mouse = Mouse.current;
+        if (anyTouchHeld || mouse == null || !mouse.leftButton.isPressed)
+            puzzleMouseHeld = false;
+        else if (mouse.leftButton.wasPressedThisFrame)
+            puzzleMouseHeld = HitLetter(mouse.position.ReadValue()) != null;
+
+        SetMovementBlock(puzzleMouseHeld || puzzleTouches.Count > 0);
+    }
+
+    private void SetMovementBlock(bool blocked)
+    {
+        bool changed = blocked ? movementBlockers.Add(this) : movementBlockers.Remove(this);
+        if (!changed) return;
+        RightScreenDragArea.ClearInput();
+        JourneyMovementSettings.RefreshPuzzleInput();
+    }
+
+    private void ReleaseMovementBlock()
+    {
+        puzzleTouches.Clear();
+        heldTouches.Clear();
+        puzzleMouseHeld = false;
+        SetMovementBlock(false);
+    }
+
+    private void OnApplicationFocus(bool focused)
+    {
+        inputFocused = focused;
+        if (!focused)
+        {
+            ReleaseMovementBlock();
+            if (drawing) ResetBrush();
+        }
+    }
+
+    private void OnApplicationPause(bool paused)
+    {
+        inputPaused = paused;
+        if (paused)
+        {
+            ReleaseMovementBlock();
+            if (drawing) ResetBrush();
+        }
+    }
 
     private void Awake()
     {
@@ -91,7 +228,7 @@ public class LightBrushPuzzle : MonoBehaviour
             successSound = CreateSuccessSound();
         }
 
-        ClearSegments();
+        RestartAllPuzzles();
     }
 
     private void PrepareSceneSuccessEffect()
@@ -113,9 +250,10 @@ public class LightBrushPuzzle : MonoBehaviour
 
     private void Update()
     {
+        UpdateMovementBlock();
         AnimateLinePulse();
 
-        if (completed || !ReadPointer(
+        if (!inputFocused || inputPaused || !configurationValid || completed || !ReadPointer(
                 out Vector2 position,
                 out bool pressed,
                 out bool held,
@@ -142,37 +280,41 @@ public class LightBrushPuzzle : MonoBehaviour
 
     private void BeginDrawing(Vector2 screenPosition)
     {
-        if (orderedLetters == null || orderedLetters.Length == 0)
-        {
-            return;
-        }
-
         Transform letter = HitLetter(screenPosition);
-        if (letter != orderedLetters[0])
-        {
-            return;
-        }
+        if (letter == null) return;
 
+        int selected = -1;
+        for (int index = 0; index < wordGroups.Length; index++)
+        {
+            if (playablePuzzles[index] && !solvedPuzzles[index] && wordGroups[index][0] == letter)
+            {
+                selected = index;
+                break;
+            }
+        }
+        if (selected < 0) return;
+
+        ClearUnfinishedSegments();
+        puzzleIndex = selected;
         drawing = true;
         currentLetter = 0;
-        ClearSegments();
         PlayMoveSound(0.45f);
     }
 
     private void ContinueDrawing(Vector2 screenPosition)
     {
-        if (currentLetter + 1 >= orderedLetters.Length)
+        if (currentLetter + 1 >= ActiveWords.Length)
         {
             return;
         }
 
         Transform letter = HitLetter(screenPosition);
-        if (letter != orderedLetters[currentLetter + 1])
+        if (letter != ActiveWords[currentLetter + 1])
         {
             return;
         }
 
-        Transform previousLetter = orderedLetters[currentLetter];
+        Transform previousLetter = ActiveWords[currentLetter];
         currentLetter++;
 
         GetConnectionPoints(previousLetter, letter, out Vector3 from, out Vector3 to);
@@ -180,7 +322,7 @@ public class LightBrushPuzzle : MonoBehaviour
         StartCoroutine(TravelLight(from, to));
         PlayMoveSound(1f);
 
-        if (currentLetter == orderedLetters.Length - 1)
+        if (currentLetter == ActiveWords.Length - 1)
         {
             completed = true;
             drawing = false;
@@ -190,18 +332,197 @@ public class LightBrushPuzzle : MonoBehaviour
 
     private System.Collections.IEnumerator CompletePuzzleAfterTravel()
     {
-        yield return new WaitForSeconds(travelDuration);
+        int version = runVersion;
+        int finishedPuzzle = puzzleIndex;
+        yield return WaitForGameplaySeconds(travelDuration);
+        if (version != runVersion || solvedPuzzles[finishedPuzzle]) yield break;
 
         Vector3 effectPosition = CalculateSuccessPosition();
         PlaySuccessEffect(effectPosition);
+        if (successSound != null) audioSource.PlayOneShot(successSound, successVolume);
 
-        if (successSound != null)
+        // Commit the result before invoking any external event: no duplicate awards.
+        solvedPuzzles[finishedPuzzle] = true;
+        SolvedPuzzleCount++;
+        TotalScore = (int)global::System.Math.Min(int.MaxValue,
+            (long)TotalScore + GetPuzzleScore(finishedPuzzle));
+        IsSequenceCompleted = SolvedPuzzleCount == wordGroups.Length;
+        completed = IsSequenceCompleted;
+        currentLetter = 0;
+        RefreshScoreDisplay();
+
+        onScoreChanged?.Invoke(TotalScore);
+        if (version != runVersion) yield break;
+        onPuzzleCompleted?.Invoke(finishedPuzzle + 1);
+        if (version != runVersion) yield break;
+        if (IsSequenceCompleted)
         {
-            audioSource.PlayOneShot(successSound, successVolume);
+            onCompleted?.Invoke();
+            Debug.Log("LightBrushPuzzle: all configured puzzles completed.", this);
+        }
+    }
+
+    private int GetPuzzleScore(int index)
+    {
+        int points;
+        switch (index)
+        {
+            case 0: points = bismillahScore; break;
+            case 1: points = ayah1Score; break;
+            case 2: points = ayah2Score; break;
+            case 3: points = ayah3Score; break;
+            case 4: points = ayah4Score; break;
+            default: points = 0; break;
+        }
+        return Mathf.Max(0, points);
+    }
+
+    public bool IsPuzzleSolved(int puzzleNumber)
+    {
+        return solvedPuzzles != null && puzzleNumber >= 1 &&
+            puzzleNumber <= solvedPuzzles.Length && solvedPuzzles[puzzleNumber - 1];
+    }
+
+    public void RefreshScoreDisplay()
+    {
+        if (scoreText == null) return;
+        string number = TotalScore.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
+        if (usePersianDigits)
+        {
+            char[] digits = number.ToCharArray();
+            for (int i = 0; i < digits.Length; i++)
+                if (digits[i] >= '0' && digits[i] <= '9')
+                    digits[i] = (char)('۰' + digits[i] - '0');
+            number = new string(digits);
+        }
+        scoreText.text = (scorePrefix ?? string.Empty) + number;
+    }
+
+    private void OnEnable()
+    {
+        RefreshScoreDisplay();
+    }
+
+    private System.Collections.IEnumerator WaitForGameplaySeconds(float seconds)
+    {
+        float elapsed = 0f;
+        // JourneyMenuController disables this component while a menu is open.
+        // Disabled MonoBehaviours still run coroutines, so gate the delay explicitly.
+        while (!isActiveAndEnabled || elapsed < Mathf.Max(0f, seconds))
+        {
+            yield return null;
+            if (isActiveAndEnabled) elapsed += Time.deltaTime;
+        }
+    }
+
+    public void RestartAllPuzzles()
+    {
+        if (!Application.isPlaying || lineTemplate == null) return;
+        ReleaseMovementBlock();
+        runVersion++;
+        StopAllCoroutines();
+        ClearSegments();
+        ClearTransientEffects();
+        if (audioSource != null) audioSource.Stop();
+        puzzleIndex = 0;
+        currentLetter = 0;
+        drawing = false;
+        completed = false;
+        IsSequenceCompleted = false;
+        wordGroups = enableIkhlasPuzzles
+            ? new[] { bismillahWords, ayah1Words, ayah2Words, ayah3Words, ayah4Words }
+            : new[] { bismillahWords };
+        solvedPuzzles = new bool[wordGroups.Length];
+        SolvedPuzzleCount = 0;
+        TotalScore = 0;
+        configurationValid = ValidateWords();
+        if (configurationValid) ShowAllWords();
+        RefreshScoreDisplay();
+        onScoreChanged?.Invoke(TotalScore);
+    }
+
+    private bool ValidateWords()
+    {
+        playablePuzzles = new bool[wordGroups.Length];
+        var assigned = new List<Transform>();
+        int playableCount = 0;
+        for (int group = 0; group < wordGroups.Length; group++)
+        {
+            string problem = CheckWordGroup(group, assigned);
+            if (problem != null)
+            {
+                Debug.LogWarning("LightBrushPuzzle: puzzle " + (group + 1) +
+                    " is skipped for this run: " + problem, this);
+                continue;
+            }
+            playablePuzzles[group] = true;
+            playableCount++;
+            assigned.AddRange(wordGroups[group]);
         }
 
-        onCompleted?.Invoke();
-        Debug.Log("بسم الله الرحمن الرحیم کامل شد!");
+        return playableCount > 0 || ConfigurationError(
+            "No playable puzzle. Fully assign at least one word list with valid Colliders and Letter Layer.");
+    }
+
+    private string CheckWordGroup(int group, List<Transform> assigned)
+    {
+        int[] requiredCounts = { 4, 4, 2, 4, 5 };
+        Transform[] words = wordGroups[group];
+        if (words == null || words.Length < 2 ||
+            (enableIkhlasPuzzles && words.Length != requiredCounts[group]))
+            return "Expected " + (enableIkhlasPuzzles ? requiredCounts[group].ToString() : "at least 2") + " words.";
+
+        // Validate locally before reserving any references for this group.
+        var candidates = new List<Transform>(assigned);
+        foreach (Transform word in words)
+        {
+            if (word == null) return "One or more word fields are empty.";
+            if (transform.IsChildOf(word)) return "A word cannot contain the LightBrush controller.";
+            foreach (Transform previous in candidates)
+                if (word.IsChildOf(previous) || previous.IsChildOf(word))
+                    return "Use separate, non-nested word objects for each slot and puzzle.";
+            candidates.Add(word);
+            bool hittable = false;
+            foreach (Collider collider in word.GetComponentsInChildren<Collider>(true))
+                if (collider.enabled && (letterLayer.value & (1 << collider.gameObject.layer)) != 0)
+                    hittable = true;
+            if (!hittable)
+                return word.name + " needs an enabled Collider on a layer in Letter Layer.";
+        }
+        return null;
+    }
+
+    private bool ConfigurationError(string message)
+    {
+        Debug.LogError("LightBrushPuzzle: " + message, this);
+        return false;
+    }
+
+    private void ShowAllWords()
+    {
+        foreach (Transform[] words in wordGroups)
+        {
+            if (words == null) continue;
+            foreach (Transform word in words)
+                if (word != null) word.gameObject.SetActive(true);
+        }
+    }
+
+    private void ClearTransientEffects()
+    {
+        foreach (GameObject effect in transientEffects)
+            if (effect != null) Destroy(effect);
+        transientEffects.Clear();
+    }
+
+    private void OnDisable()
+    {
+        ReleaseMovementBlock();
+        // Cancel a partial gesture when opening a menu; keep completed puzzle progress.
+        if (!drawing) return;
+        StopAllCoroutines();
+        ClearTransientEffects();
+        ResetBrush();
     }
 
     private Transform HitLetter(Vector2 screenPosition)
@@ -228,12 +549,14 @@ public class LightBrushPuzzle : MonoBehaviour
             return null;
         }
 
-        foreach (Transform letter in orderedLetters)
+        for (int group = 0; group < wordGroups.Length; group++)
         {
-            if (letter != null &&
-                (hit.transform == letter || hit.transform.IsChildOf(letter)))
+            if (!playablePuzzles[group]) continue;
+            foreach (Transform letter in wordGroups[group])
             {
-                return letter;
+                if (letter != null &&
+                    (hit.transform == letter || hit.transform.IsChildOf(letter)))
+                    return letter;
             }
         }
 
@@ -318,6 +641,7 @@ public class LightBrushPuzzle : MonoBehaviour
         lightSegments.Add(new LightSegment
         {
             Root = root,
+            PuzzleIndex = puzzleIndex,
             Glow = glow,
             Core = core
         });
@@ -381,6 +705,7 @@ public class LightBrushPuzzle : MonoBehaviour
     {
         GameObject energy = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         energy.name = "Traveling Light";
+        transientEffects.Add(energy);
 
         Collider generatedCollider = energy.GetComponent<Collider>();
         if (generatedCollider != null)
@@ -433,6 +758,7 @@ public class LightBrushPuzzle : MonoBehaviour
             );
 
             GameObject effectObject = effect.gameObject;
+            transientEffects.Add(effectObject);
             effectObject.SetActive(true);
 
             ParticleSystem[] particleSystems =
@@ -461,6 +787,7 @@ public class LightBrushPuzzle : MonoBehaviour
     private ParticleSystem CreateSuccessParticles(Vector3 position)
     {
         GameObject effectObject = new GameObject("Light Brush Success Effect");
+        transientEffects.Add(effectObject);
         effectObject.transform.position = position;
 
         ParticleSystem particles = effectObject.AddComponent<ParticleSystem>();
@@ -533,6 +860,7 @@ public class LightBrushPuzzle : MonoBehaviour
         }
 
         GameObject ringObject = new GameObject("Success Light Ring");
+        transientEffects.Add(ringObject);
         ringObject.transform.position = position;
         ringObject.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
@@ -573,6 +901,7 @@ public class LightBrushPuzzle : MonoBehaviour
     private System.Collections.IEnumerator SuccessLightPulse(Vector3 position)
     {
         GameObject lightObject = new GameObject("Success Light");
+        transientEffects.Add(lightObject);
         lightObject.transform.position = position;
 
         Light successLight = lightObject.AddComponent<Light>();
@@ -600,7 +929,7 @@ public class LightBrushPuzzle : MonoBehaviour
         bool hasBounds = false;
         Bounds combinedBounds = new Bounds();
 
-        foreach (Transform letter in orderedLetters)
+        foreach (Transform letter in ActiveWords)
         {
             if (letter == null)
             {
@@ -650,7 +979,18 @@ public class LightBrushPuzzle : MonoBehaviour
     {
         drawing = false;
         currentLetter = 0;
-        ClearSegments();
+        ClearUnfinishedSegments();
+    }
+
+    private void ClearUnfinishedSegments()
+    {
+        for (int i = lightSegments.Count - 1; i >= 0; i--)
+        {
+            LightSegment segment = lightSegments[i];
+            if (solvedPuzzles != null && solvedPuzzles[segment.PuzzleIndex]) continue;
+            if (segment.Root != null) Destroy(segment.Root);
+            lightSegments.RemoveAt(i);
+        }
     }
 
     private void ClearSegments()
@@ -955,6 +1295,8 @@ public class LightBrushPuzzle : MonoBehaviour
 
     private void OnDestroy()
     {
+        ReleaseMovementBlock();
+        ClearTransientEffects();
         Destroy(glowMaterial);
         Destroy(coreMaterial);
         Destroy(energyMaterial);
