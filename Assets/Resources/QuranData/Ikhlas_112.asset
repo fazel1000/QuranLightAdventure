@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71a29fdfc3b104c438d6b86155f6cc6d, type: 3}
+  m_Name: Ikhlas_112
+  m_EditorClassIdentifier: 
+  surahNumber: 112
+  verses:
+  - verseNumber: 1
+    verseAudio: {fileID: 8300000, guid: 98d8c1f688156ce41945d7cb22d0614e, type: 3}
+    displayText: 
+  - verseNumber: 2
+    verseAudio: {fileID: 8300000, guid: d71fe29baca51c040b2147df89cfa41b, type: 3}
+    displayText: 
+  - verseNumber: 3
+    verseAudio: {fileID: 8300000, guid: e97a1b21e2fdafd498498d7637165563, type: 3}
+    displayText: 
+  - verseNumber: 4
+    verseAudio: {fileID: 8300000, guid: 430b03489c2e7b74b8fc2c453e4b4868, type: 3}
+    displayText: 
+  - verseNumber: 5
+    verseAudio: {fileID: 8300000, guid: 39942bd1cad47864aba44f432618ce53, type: 3}
+    displayText: 

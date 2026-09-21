@@ -113,7 +113,7 @@ public class LightBrushPuzzle : MonoBehaviour
     private bool inputFocused = true;
     private bool inputPaused;
 
-    public static bool IsMovementBlocked => movementBlockers.Count > 0;
+    public static bool IsMovementBlocked => movementBlockers.Count > 0 || JourneyVoiceBoard.IsPointerCaptured;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetMovementBlockers()
@@ -252,6 +252,11 @@ public class LightBrushPuzzle : MonoBehaviour
     {
         UpdateMovementBlock();
         AnimateLinePulse();
+        if (JourneyVoiceBoard.IsPointerCaptured)
+        {
+            if (drawing) ResetBrush();
+            return;
+        }
 
         if (!inputFocused || inputPaused || !configurationValid || completed || !ReadPointer(
                 out Vector2 position,
@@ -381,6 +386,15 @@ public class LightBrushPuzzle : MonoBehaviour
     {
         return solvedPuzzles != null && puzzleNumber >= 1 &&
             puzzleNumber <= solvedPuzzles.Length && solvedPuzzles[puzzleNumber - 1];
+    }
+
+    // Award once per successfully assessed recording. Examples: 55% -> 5 points.
+    public void AddVoicePoints(int points)
+    {
+        if (points <= 0) return;
+        TotalScore = (int)global::System.Math.Min(int.MaxValue, (long)TotalScore + points);
+        RefreshScoreDisplay();
+        onScoreChanged?.Invoke(TotalScore);
     }
 
     public void RefreshScoreDisplay()
