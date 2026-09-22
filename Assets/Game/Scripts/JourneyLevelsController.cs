@@ -28,6 +28,15 @@ public sealed class JourneyLevelsController : MonoBehaviour
     [SerializeField, Range(1, 5)] private int starsRequiredToUnlockNext = 3;
     [SerializeField] private string progressKey = "JourneyOfLight.Chapter1.v1";
 
+    [Header("Testing - disable before release")]
+    [Tooltip("Unlock every level temporarily. Results are not saved while enabled.")]
+    [SerializeField] private bool unlockAllLevelsForTesting = true;
+
+    [Header("Start positions - Element 0 is level 1")]
+    [SerializeField] private global::GameCreator.Runtime.Characters.Character player;
+    [Tooltip("Optional. Leave empty to keep the old selection behavior. When used, assign one point for every selectable level.")]
+    [SerializeField] private Transform[] levelSpawnPoints = new Transform[0];
+
     [Header("Horizontal Row - size comes from the prefab")]
     [SerializeField, Min(0f)] private float spacing = 60f;
     [SerializeField, Min(0)] private int padding = 30;
@@ -68,6 +77,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
     private bool initialized;
     private JourneyUIFeedback feedback;
     private bool wasVisible;
+    private bool lastTestingUnlock;
     private Vector2 lastViewportSize = new Vector2(-1f, -1f);
     private Vector4 lastLayoutSettings;
 
@@ -307,6 +317,11 @@ public sealed class JourneyLevelsController : MonoBehaviour
     {
         if (!initialized || levelsScrollView == null || content == null || viewport == null) return;
 
+        if (lastTestingUnlock != unlockAllLevelsForTesting)
+        {
+            lastTestingUnlock = unlockAllLevelsForTesting;
+            RefreshButtons();
+        }
         bool visible = levelsScrollView.isActiveAndEnabled;
         if (!visible)
         {
@@ -399,7 +414,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
     public bool IsLevelUnlocked(int levelNumber)
     {
         return initialized && levelNumber >= 1 && levelNumber <= levelCount &&
-               levelNumber <= HighestUnlockedLevel;
+               (unlockAllLevelsForTesting || levelNumber <= HighestUnlockedLevel);
     }
 
     public int GetBestStars(int levelNumber)
@@ -423,9 +438,36 @@ public sealed class JourneyLevelsController : MonoBehaviour
     private void FinishLevelSelection(int levelNumber)
     {
         if (!IsLevelUnlocked(levelNumber)) return;
+        if (!MovePlayerToLevel(levelNumber)) return;
         SelectedLevelNumber = levelNumber;
         Debug.Log("Journey of Light: selected level " + levelNumber, this);
         onLevelSelected?.Invoke(levelNumber);
+    }
+
+    private bool MovePlayerToLevel(int levelNumber)
+    {
+        if (levelSpawnPoints == null || levelSpawnPoints.Length == 0) return true;
+        int index = levelNumber - 1;
+        if (index >= levelSpawnPoints.Length || levelSpawnPoints[index] == null)
+        {
+            Debug.LogError("JourneyLevelsController: assign a spawn point for level " + levelNumber, this);
+            return false;
+        }
+        if (player == null)
+        {
+            Debug.LogError("JourneyLevelsController: assign the Player Character.", this);
+            return false;
+        }
+        Transform point = levelSpawnPoints[index];
+        player.Driver.SetPosition(point.position);
+        player.Driver.SetRotation(point.rotation);
+        return true;
+    }
+
+    public void SetTestingUnlock(bool value)
+    {
+        unlockAllLevelsForTesting = value;
+        RefreshButtons();
     }
 
     // Call only after the island's actual completion/scoring system awards stars.
@@ -433,6 +475,7 @@ public sealed class JourneyLevelsController : MonoBehaviour
     public void CompleteLevel(int levelNumber, int earnedStars)
     {
         if (!IsLevelUnlocked(levelNumber)) return;
+        if (unlockAllLevelsForTesting) return; // Keep test results out of saved progression.
 
         earnedStars = Mathf.Clamp(earnedStars, 0, 5);
         bestStars[levelNumber - 1] = Mathf.Max(bestStars[levelNumber - 1], earnedStars);
