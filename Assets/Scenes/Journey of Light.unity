@@ -2589,8 +2589,8 @@ MonoBehaviour:
   activeLevel: 2
   player: {fileID: 445630434}
   gameplayCamera: {fileID: 330585545}
-  handSocket: {fileID: 1133136560}
-  throwOrigin: {fileID: 1133136560}
+  handSocket: {fileID: 1333652964}
+  throwOrigin: {fileID: 1297096565}
   target: {fileID: 808317092}
   stonesRoot: {fileID: 1844240281}
   throwButton: {fileID: 1601110871}
@@ -2599,10 +2599,12 @@ MonoBehaviour:
   trajectory: {fileID: 0}
   pickupMarker: {fileID: 0}
   pickupDistance: 2.5
-  throwSpeed: 18
-  defaultElevation: 35
-  dragDegreesPerScreen: 100
-  aimAssistDegrees: 6
+  minimumThrowSpeed: 6
+  maximumThrowSpeed: 22
+  fullChargeSeconds: 1.5
+  aimRayDistance: 100
+  aimReticle: {fileID: 2059810651}
+  chargeFill: {fileID: 0}
   flightCollisionLayers:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -2611,9 +2613,11 @@ MonoBehaviour:
     m_Bits: 4294967295
   previewSegments: 40
   previewStep: 0.08
-  animator: {fileID: 0}
-  pickupTrigger: 
-  throwTrigger: 
+  pickupAttachDelay: 1.2
+  pickupTotalDuration: 1
+  animator: {fileID: 1821798570}
+  pickupTrigger: Pickup
+  throwTrigger: Throw
   releaseDelay: 0.2
   aimCameraPose: {fileID: 0}
   cameraDriversToPause: []
@@ -4198,6 +4202,7 @@ RectTransform:
   m_Children:
   - {fileID: 136988675}
   - {fileID: 876510551}
+  - {fileID: 2059810651}
   - {fileID: 690197882}
   - {fileID: 1845369505}
   - {fileID: 363674078}
@@ -6029,6 +6034,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1617646952}
+  - {fileID: 1297096565}
   m_Father: {fileID: 832272665}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &455896098
@@ -11226,6 +11232,7 @@ Transform:
   m_Children:
   - {fileID: 214690689}
   - {fileID: 805568420}
+  - {fileID: 1333652964}
   m_Father: {fileID: 1985085596}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1138014230
@@ -12913,6 +12920,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 379853440220740438, guid: 46b2f4ee5b11c2749a7253912feb3f5f, type: 3}
   m_PrefabInstance: {fileID: 1288179962}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1297096564
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1297096565}
+  m_Layer: 8
+  m_Name: 'StoneThrowOrigin   '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1297096565
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1297096564}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.241, y: 0, z: 0.241}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 445630434}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1303462026
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13246,6 +13284,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1326169725}
   m_CullTransparentMesh: 1
+--- !u!1 &1333652963
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1333652964}
+  m_Layer: 8
+  m_Name: StoneHandSocket
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1333652964
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1333652963}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.0189, y: 0.0366, z: 0.039}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1133136560}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1335006741
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18192,14 +18261,20 @@ Animator:
   m_GameObject: {fileID: 1821798568}
   m_Enabled: 1
   m_Avatar: {fileID: 9000000, guid: e8d6c075b664b324eb36f4687d1875c1, type: 3}
-  m_Controller: {fileID: 9100000, guid: ecba992c2f1394f9eb808f518164f8ea, type: 2}
+  m_Controller: {fileID: 9100000, guid: 18b3bc0da7942744a935b1af0288d022, type: 2}
   m_CullingMode: 1
   m_UpdateMode: 0
   m_ApplyRootMotion: 1
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
   m_AnimatePhysics: 0
-  m_WarningMessage: 
+  m_WarningMessage: "\nBinding warning: Some generic clip(s) animate transforms that
+    are already bound by a Humanoid avatar. These transforms can only be changed
+    by Humanoid clips.\n\tTransform 'Hips'\n\tTransform 'Spine1'\n\tTransform 'Neck'\n\tTransform
+    'RightForeArm'\n\tTransform 'LeftLeg'\n\tTransform 'RightHandIndex3'\n\tTransform
+    'RightHandIndex1'\n\tTransform 'LeftArm'\n\tTransform 'RightShoulder'\n\tTransform
+    'LeftShoulder'\n\tand more ...\n\tFrom animation clip 'Pick_Up'\n\tFrom animation
+    clip 'Throw'"
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
@@ -21531,6 +21606,81 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1597154899295253569, guid: a5263970870849f40b5a65fa44a6a154, type: 3}
   m_PrefabInstance: {fileID: 2048046676}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2059810650
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2059810651}
+  - component: {fileID: 2059810653}
+  - component: {fileID: 2059810652}
+  m_Layer: 0
+  m_Name: 'StoneAimReticle '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &2059810651
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2059810650}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 324690871}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 50, y: 50}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &2059810652
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2059810650}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 3803023705015740789, guid: 5ad0459b230874041b94b2736e508179, type: 3}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &2059810653
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2059810650}
+  m_CullTransparentMesh: 1
 --- !u!1001 &2073655867
 PrefabInstance:
   m_ObjectHideFlags: 0

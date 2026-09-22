@@ -43,6 +43,9 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     [SerializeField] private LayerMask pickupRayLayers = ~0;
     [SerializeField, Range(12, 80)] private int previewSegments = 40;
     [SerializeField, Min(0.02f)] private float previewStep = 0.08f;
+    [Header("Pickup timing in seconds - tune against the clip preview")]
+    [SerializeField, Min(0f)] private float pickupAttachDelay = 1.2f;
+    [SerializeField, Min(0.2f)] private float pickupTotalDuration = 3.85f;
     [Header("Optional character animation")]
     [SerializeField] private Animator animator;
     [SerializeField] private string pickupTrigger = "";
@@ -65,6 +68,9 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     public bool CanContinueFlight => initialized && hasFocus && !paused && isActiveAndEnabled && levels != null && levels.SelectedLevelNumber == activeLevel
         && (menu == null || !menu.IsMenuOpen);
     private JourneyThrowableStone held;
+    private JourneyThrowableStone pickupCandidate;
+    private Coroutine pickupRoutine;
+    private bool pickingUp;
     private JourneyThrowableStone[] stones;
     private readonly List<RaycastResult> uiHits = new List<RaycastResult>();
     private bool aiming, releasing, wasActive, initialized;
@@ -122,15 +128,15 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
             return;
         }
         wasActive = true;
-        if (!aiming && !releasing && pickupPointerId == int.MinValue && Time.frameCount > blockThroughFrame) SetBlock(false);
-        if (held != null)
+        if (!pickingUp && !aiming && !releasing && pickupPointerId == int.MinValue && Time.frameCount > blockThroughFrame) SetBlock(false);
+        if (held != null && !pickingUp)
         {
             ShowCursor();
             if (!aiming && Mouse.current != null && (Touchscreen.current == null || !Touchscreen.current.primaryTouch.press.isPressed))
                 aimScreenPosition = Mouse.current.position.ReadValue();
         }
         ReadPointers();
-        if (held != null && !releasing) DrawPreview();
+        if (held != null && !pickingUp && !releasing) DrawPreview();
         UpdateUI();
     }
 
@@ -178,7 +184,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         Selectable ui = down || up ? SelectableAt(position) : null;
         if (down && ui == cancelButton && cancelButton.gameObject.activeInHierarchy)
         { CancelAim(); return; }
-        if (releasing) return;
+        if (releasing || pickingUp) return;
         if (aiming)
         {
             if (id != pointerId) return;
@@ -203,17 +209,49 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         JourneyThrowableStone stone = hit.collider.GetComponentInParent<JourneyThrowableStone>();
         if (stone == null || !stone.transform.IsChildOf(stonesRoot) || !stone.CanPickUp ||
             Vector3.Distance(player.position, stone.transform.position) > pickupDistance) return;
-        if (stone.PickUp(handSocket))
+        pickingUp = true;
+        pickupCandidate = stone;
+        aimScreenPosition = id == -1 ? position : new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+        pickupPointerId = id;
+        SetBlock(true);
+        Trigger(pickupTrigger);
+        pickupRoutine = StartCoroutine(PickupSequence());
+    }
+
+    private IEnumerator PickupSequence()
+    {
+        float attachDelay = Mathf.Max(0f, pickupAttachDelay);
+        yield return new WaitForSeconds(attachDelay);
+        if (!CanContinueFlight || pickupCandidate == null || !pickupCandidate.CanPickUp ||
+            !pickupCandidate.PickUp(handSocket))
         {
-            held = stone;
-            aimScreenPosition = id == -1 ? position : new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            ShowCursor();
-            pickupPointerId = id;
+            pickingUp = false;
+            pickupCandidate = null;
+            pickupRoutine = null;
             blockThroughFrame = Time.frameCount + 1;
-            SetBlock(true);
-            Trigger(pickupTrigger);
-            PlaySound(pickupSound);
+            yield break;
         }
+        held = pickupCandidate;
+        PlaySound(pickupSound);
+        // PickUp itself eases the stone into the socket over 0.2 seconds.
+        yield return new WaitForSeconds(Mathf.Max(0.2f, pickupTotalDuration - attachDelay));
+        pickingUp = false;
+        pickupCandidate = null;
+        pickupRoutine = null;
+        blockThroughFrame = Time.frameCount + 1;
+        if (held != null && CanContinueFlight) ShowCursor();
+        UpdateUI();
+    }
+
+    private void CancelPickup()
+    {
+        if (!pickingUp) return;
+        if (pickupRoutine != null) StopCoroutine(pickupRoutine);
+        pickupRoutine = null;
+        if (pickupCandidate != null) pickupCandidate.ResetStone();
+        if (held == pickupCandidate) held = null;
+        pickupCandidate = null;
+        pickingUp = false;
     }
 
     private void BeginAim(int id, Vector2 position)
@@ -355,19 +393,19 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         bool active = CanContinueFlight;
         if (throwButton != null)
         {
-            throwButton.gameObject.SetActive(active && held != null);
+            throwButton.gameObject.SetActive(active && held != null && !pickingUp);
             throwButton.interactable = !releasing;
         }
         if (cancelButton != null) cancelButton.gameObject.SetActive(active && aiming);
         if (chargeFill != null)
         {
             chargeFill.raycastTarget = false;
-            chargeFill.gameObject.SetActive(active && held != null);
+            chargeFill.gameObject.SetActive(active && held != null && !pickingUp);
             chargeFill.fillAmount = Charge01;
         }
         if (aimReticle != null)
         {
-            aimReticle.gameObject.SetActive(active && held != null && !releasing);
+            aimReticle.gameObject.SetActive(active && held != null && !pickingUp);
             var parent = aimReticle.parent as RectTransform;
             var canvas = aimReticle.GetComponentInParent<Canvas>();
             Camera uiCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
@@ -377,14 +415,14 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         if (hintText != null)
         {
             hintText.gameObject.SetActive(active);
-            hintText.text = releasing ? "" : aiming ? "نگه دار تا قدرت بیشتر شود؛ رها کن تا پرتاب شود" :
+            hintText.text = pickingUp ? "در حال برداشتن سنگ" : releasing ? "" : aiming ? "نگه دار تا قدرت بیشتر شود؛ رها کن تا پرتاب شود" :
                 held != null ? "دکمه پرتاب را نگه دار" : "نزدیک سنگ برو و روی آن بزن";
         }
         if (pickupMarker != null)
         {
             JourneyThrowableStone closest = null;
             float best = pickupDistance;
-            if (active && held == null && stones != null)
+            if (active && held == null && !pickingUp && stones != null)
                 foreach (var stone in stones)
                 {
                     if (stone == null || !stone.CanPickUp) continue;
@@ -430,6 +468,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
 
     public void ResetRound()
     {
+        CancelPickup();
         if (releaseRoutine != null) StopCoroutine(releaseRoutine);
         releaseRoutine = null;
         aiming = releasing = false;
@@ -444,8 +483,8 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
             foreach (var stone in stones) if (stone != null) stone.ResetStone();
     }
 
-    private void OnApplicationFocus(bool focus) { hasFocus = focus; if (!focus) { CancelAim(); pickupPointerId = int.MinValue; SetBlock(false); } }
-    private void OnApplicationPause(bool pause) { paused = pause; if (pause) { CancelAim(); pickupPointerId = int.MinValue; SetBlock(false); } }
+    private void OnApplicationFocus(bool focus) { hasFocus = focus; if (!focus) { CancelPickup(); CancelAim(); pickupPointerId = int.MinValue; SetBlock(false); } }
+    private void OnApplicationPause(bool pause) { paused = pause; if (pause) { CancelPickup(); CancelAim(); pickupPointerId = int.MinValue; SetBlock(false); } }
     private void OnDisable()
     {
         ResetRound();

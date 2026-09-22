@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
@@ -11,6 +12,8 @@ public sealed class JourneyStoneAnimatorSetup : EditorWindow
     private AnimationClip pickup, throwing;
     private JourneyStoneThrowController throwController;
     private string result;
+    private AnimatorController locomotionController;
+    private int remappedPaths;
     private const string LayerName = "Journey Stone Actions";
 
     [MenuItem("Quran Kids/Setup Stone Animator")]
@@ -20,6 +23,7 @@ public sealed class JourneyStoneAnimatorSetup : EditorWindow
     {
         EditorGUILayout.HelpBox("Creates a COPY of the player's current controller and adds a stone-action layer. Do not assign the standalone Stone_Thowing template over locomotion.", MessageType.Info);
         playerAnimator = (Animator)EditorGUILayout.ObjectField("Player Animator", playerAnimator, typeof(Animator), true);
+        locomotionController = (AnimatorController)EditorGUILayout.ObjectField("Locomotion Controller", locomotionController, typeof(AnimatorController), false);
         pickup = (AnimationClip)EditorGUILayout.ObjectField("Pick Up Clip", pickup, typeof(AnimationClip), false);
         throwing = (AnimationClip)EditorGUILayout.ObjectField("Throw Clip", throwing, typeof(AnimationClip), false);
         throwController = (JourneyStoneThrowController)EditorGUILayout.ObjectField("Throw Controller", throwController, typeof(JourneyStoneThrowController), true);
@@ -29,22 +33,61 @@ public sealed class JourneyStoneAnimatorSetup : EditorWindow
         if (!string.IsNullOrEmpty(result)) EditorGUILayout.HelpBox(result, MessageType.Info);
     }
 
+    private string ResolvePath(string sourcePath)
+    {
+        if (string.IsNullOrEmpty(sourcePath)) return sourcePath;
+        if (playerAnimator.transform.Find(sourcePath) != null) return sourcePath;
+        string normalized = NormalizePath(sourcePath);
+        string[] matches = playerAnimator.GetComponentsInChildren<Transform>(true)
+            .Select(t => AnimationUtility.CalculateTransformPath(t, playerAnimator.transform))
+            .Where(p => NormalizePath(p) == normalized || NormalizePath(p).EndsWith("/" + normalized, StringComparison.Ordinal))
+            .Distinct().ToArray();
+        if (matches.Length == 1) return matches[0];
+        throw new InvalidOperationException(matches.Length == 0
+            ? "No matching skeleton hierarchy for " + sourcePath + ". Nothing has been renamed or ignored."
+            : "Ambiguous skeleton path: " + sourcePath + ". Select the Animator of one model only.");
+    }
+
+    private static string NormalizePath(string path)
+    {
+        return string.Join("/", path.Split('/').Select(part =>
+            part.StartsWith("mixamorig:", StringComparison.Ordinal) ? part.Substring(10) : part));
+    }
+
     private void CheckClip(AnimationClip clip)
     {
         if (clip.legacy) throw new InvalidOperationException("The clip must not be Legacy: " + clip.name);
-        if (clip.isHumanMotion && playerAnimator.isHuman) return;
-        // Uploaded clips contain explicit mixamorig transform tracks. Do not assume retargeting.
+        if (clip.isHumanMotion)
+        {
+            if (!playerAnimator.isHuman) throw new InvalidOperationException("Humanoid clip needs a valid Humanoid Avatar.");
+            return;
+        }
+        var keys = new HashSet<string>();
         foreach (var binding in AnimationUtility.GetCurveBindings(clip))
-            if (binding.type == typeof(Transform) && !string.IsNullOrEmpty(binding.path) &&
-                playerAnimator.transform.Find(binding.path) == null)
-                throw new InvalidOperationException("Clip skeleton path is missing below this Animator: " + binding.path +
-                    ". Use the matching model Animator, or reimport the original FBX as Humanoid; renaming a controller cannot retarget transform curves.");
+        {
+            string path = ResolvePath(binding.path);
+            string key = path + "|" + binding.type.FullName + "|" + binding.propertyName;
+            if (!keys.Add(key)) throw new InvalidOperationException("Two curves would overwrite the same target: " + key);
+        }
+        foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip)) ResolvePath(binding.path);
     }
 
     private void Build()
     {
-        if (!(playerAnimator.runtimeAnimatorController is AnimatorController original))
-            throw new InvalidOperationException("Player Animator needs its existing AnimatorController. If Game Creator supplies an OverrideController or a controller at runtime, keep it unchanged and inspect that setup before integrating.");
+        AnimatorController original = locomotionController;
+        if (original == null)
+        {
+            original = playerAnimator.runtimeAnimatorController as AnimatorController;
+            if (original != null && (original.name == "Stone_Thowing" || original.name == "Stone_Throwing"))
+            {
+                // Original Character 05 controller GUID observed in this project's scene.
+                string originalControllerPath = AssetDatabase.GUIDToAssetPath("ecba992c2f1394f9eb808f518164f8ea");
+                original = AssetDatabase.LoadAssetAtPath<AnimatorController>(originalControllerPath);
+            }
+        }
+        if (original == null || original.name == "Stone_Thowing" || original.name == "Stone_Throwing")
+            throw new InvalidOperationException("Assign the original movement controller in Locomotion Controller. The standalone Stone_Thowing has no walking states.");
+        remappedPaths = 0;
         if (!playerAnimator.gameObject.scene.IsValid() || !throwController.gameObject.scene.IsValid())
             throw new InvalidOperationException("Assign scene instances of Player Animator and Throw Controller.");
         if (original.layers.Any(x => x.name == LayerName))
@@ -91,7 +134,7 @@ public sealed class JourneyStoneAnimatorSetup : EditorWindow
         EditorSceneManager.MarkSceneDirty(playerAnimator.gameObject.scene);
         EditorSceneManager.MarkSceneDirty(throwController.gameObject.scene);
         Selection.activeObject = copy;
-        result = "Created " + path + ". Original controller preserved. Test movement and both animations. Release Delay still needs visual tuning.";
+        result = "Created " + path + ". Remapped " + remappedPaths + " curve bindings to the actual skeleton. Original model and clips preserved. Check limb poses in Unity; path remapping is not full Humanoid retargeting.";
     }
 
     private static void AddAction(AnimatorStateMachine sm, AnimatorState idle, string trigger, AnimationClip clip, Vector3 position)
@@ -113,10 +156,33 @@ public sealed class JourneyStoneAnimatorSetup : EditorWindow
         exit.duration = 0.15f;
     }
 
-    private static AnimationClip CopyClip(AnimationClip source, string folder)
+    private AnimationClip CopyClip(AnimationClip source, string folder)
     {
         var clip = Instantiate(source);
         clip.name = source.name;
+        if (!source.isHumanMotion)
+        {
+            var bindings = AnimationUtility.GetCurveBindings(source);
+            var curves = bindings.Select(b => AnimationUtility.GetEditorCurve(source, b)).ToArray();
+            var mapped = bindings.ToArray();
+            for (int i = 0; i < mapped.Length; i++)
+            {
+                mapped[i].path = ResolvePath(bindings[i].path);
+                if (mapped[i].path != bindings[i].path) remappedPaths++;
+            }
+            // Remove source bindings first, then write target bindings with identical curve data.
+            foreach (var binding in bindings) AnimationUtility.SetEditorCurve(clip, binding, null);
+            for (int i = 0; i < mapped.Length; i++) AnimationUtility.SetEditorCurve(clip, mapped[i], curves[i]);
+            var objects = AnimationUtility.GetObjectReferenceCurveBindings(source);
+            var objectCurves = objects.Select(b => AnimationUtility.GetObjectReferenceCurve(source, b)).ToArray();
+            foreach (var binding in objects) AnimationUtility.SetObjectReferenceCurve(clip, binding, null);
+            for (int i = 0; i < objects.Length; i++)
+            {
+                var binding = objects[i];
+                binding.path = ResolvePath(binding.path);
+                AnimationUtility.SetObjectReferenceCurve(clip, binding, objectCurves[i]);
+            }
+        }
         var settings = AnimationUtility.GetAnimationClipSettings(clip);
         settings.loopTime = false;
         AnimationUtility.SetAnimationClipSettings(clip, settings);
