@@ -20,6 +20,8 @@ public sealed class JourneyThrowableStone : MonoBehaviour
     private JourneyStoneThrowController owner;
     private bool held, spent, thrown, initialized;
     private float flightAge;
+    public Vector3 LaunchPosition { get; private set; }
+    public bool WasLaunchedBy(JourneyStoneThrowController controller) => thrown && owner == controller;
     public bool CanPickUp => initialized && isActiveAndEnabled && !held && !spent &&
         (!thrown || (flightAge > 0.5f && body.linearVelocity.sqrMagnitude < pickupSpeedLimit * pickupSpeedLimit));
     public float Radius
@@ -56,8 +58,8 @@ public sealed class JourneyThrowableStone : MonoBehaviour
         body.linearDamping = Mathf.Max(0f, linearDamping);
         body.angularDamping = Mathf.Max(0f, angularDamping);
         body.useGravity = true;
-        body.interpolation = RigidbodyInterpolation.Interpolate;
         body.isKinematic = false;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
         body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         initialized = true;
     }
@@ -71,6 +73,10 @@ public sealed class JourneyThrowableStone : MonoBehaviour
         owner = null;
         body.linearVelocity = Vector3.zero;
         body.angularVelocity = Vector3.zero;
+        // While carried, animation owns the pose. Rigidbody interpolation would
+        // otherwise apply a delayed world pose while the hand continues moving.
+        body.interpolation = RigidbodyInterpolation.None;
+        body.collisionDetectionMode = CollisionDetectionMode.Discrete;
         body.isKinematic = true;
         hitCollider.enabled = false;
         transform.SetParent(hand, true);
@@ -91,7 +97,16 @@ public sealed class JourneyThrowableStone : MonoBehaviour
             transform.localRotation = Quaternion.Slerp(rotation, Quaternion.identity, t);
             yield return null;
         }
+        transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.identity;
         motion = null;
+    }
+
+    private void LateUpdate()
+    {
+        if (!held || motion != null) return;
+        transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.identity;
     }
 
     public void Launch(Vector3 position, Vector3 velocity, LayerMask collisionLayers,
@@ -106,9 +121,11 @@ public sealed class JourneyThrowableStone : MonoBehaviour
         held = false;
         thrown = true;
         flightAge = 0f;
+        LaunchPosition = position;
         owner = controller;
         hitCollider.enabled = true;
         body.isKinematic = false;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
         body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         body.linearVelocity = velocity;
         body.angularVelocity = Random.onUnitSphere * 4f;
@@ -146,12 +163,16 @@ public sealed class JourneyThrowableStone : MonoBehaviour
         held = spent = thrown = false;
         owner = null;
         transform.SetParent(originalParent, true);
+        body.interpolation = RigidbodyInterpolation.None;
+        body.collisionDetectionMode = CollisionDetectionMode.Discrete;
         body.isKinematic = true;
         transform.SetPositionAndRotation(originalPosition, originalRotation);
         body.position = originalPosition;
         body.rotation = originalRotation;
         hitCollider.enabled = true;
         body.isKinematic = false;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         body.linearVelocity = Vector3.zero;
         body.angularVelocity = Vector3.zero;
         body.WakeUp();

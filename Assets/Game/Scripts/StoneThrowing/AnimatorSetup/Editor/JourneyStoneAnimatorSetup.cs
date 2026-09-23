@@ -94,7 +94,7 @@ public sealed class JourneyStoneAnimatorSetup : EditorWindow
             throw new InvalidOperationException("Stone layer already exists. Setup has not been duplicated.");
         CheckClip(pickup);
         CheckClip(throwing);
-        foreach (string name in new[] { "Pickup", "Throw" })
+        foreach (string name in new[] { "Pickup", "Throw", "PickupSpeed" })
             if (original.parameters.Any(p => p.name == name))
                 throw new InvalidOperationException("Existing parameter conflicts with " + name + ". Original controller was not changed.");
 
@@ -104,6 +104,8 @@ public sealed class JourneyStoneAnimatorSetup : EditorWindow
         if (!AssetDatabase.CopyAsset(AssetDatabase.GetAssetPath(original), path))
             throw new InvalidOperationException("Could not copy the current controller.");
         var copy = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
+        copy.AddParameter(new AnimatorControllerParameter
+        { name = "PickupSpeed", type = AnimatorControllerParameterType.Float, defaultFloat = 0.5f });
         copy.AddParameter("Pickup", AnimatorControllerParameterType.Trigger);
         copy.AddParameter("Throw", AnimatorControllerParameterType.Trigger);
         copy.AddLayer(LayerName);
@@ -141,6 +143,11 @@ public sealed class JourneyStoneAnimatorSetup : EditorWindow
     {
         var state = sm.AddState(trigger, position);
         state.motion = clip;
+        if (trigger == "Pickup")
+        {
+            state.speedParameterActive = true;
+            state.speedParameter = "PickupSpeed";
+        }
         state.writeDefaultValues = false;
         state.AddStateMachineBehaviour<JourneyStoneAnimationLayer>().active = true;
         var enter = sm.AddAnyStateTransition(state);

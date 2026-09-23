@@ -72,7 +72,7 @@ public sealed class JourneyMenuController : MonoBehaviour
         // GC's existing On Start currently locks the cursor. UI input needs
         // finite screen coordinates, so menus must keep that cursor unlocked.
         Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        Cursor.visible = false;
 
         BlockPlayerControl();
 
@@ -151,7 +151,7 @@ public sealed class JourneyMenuController : MonoBehaviour
         }
 
         Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        Cursor.visible = false;
     }
 
     private void CaptureGameplayInput()

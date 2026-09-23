@@ -1,10 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 
 [DefaultExecutionOrder(-300)]
 [DisallowMultipleComponent]
@@ -21,42 +21,68 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     [SerializeField] private Transform throwOrigin;
     [SerializeField] private JourneyStoneTower target;
     [SerializeField] private Transform stonesRoot;
-    [Header("UI - keep On Click lists empty")]
+    [Header("Hint panel - drag the parent UI Image here")]
+    [Tooltip("Image containing the instruction text. The whole panel fades together. Keep it separate from this controller and gameplay controls.")]
+    [SerializeField] private Image hintImage;
+    [SerializeField, Min(0f)] private float hintFadeInSeconds = 0.35f;
+    [SerializeField, Min(0f)] private float hintVisibleSeconds = 3f;
+    [SerializeField, Min(0f)] private float hintFadeOutSeconds = 0.5f;
+    [Header("Touch Throw, drag to aim, release to throw")]
+    [Tooltip("Assign the UI Throw button. Keep its On Click list empty.")]
     [SerializeField] private Button throwButton;
-    [SerializeField] private Button cancelButton;
-    [SerializeField] private TMP_Text hintText;
+    [Tooltip("Minimum drag distance as a fraction of the shorter screen dimension. A tap does not throw.")]
+    [SerializeField, Range(0.001f, 0.1f)] private float minimumDragDistance = 0.015f;
     [SerializeField] private LineRenderer trajectory;
     [Tooltip("Optional marker displayed above the nearest available stone.")]
     [SerializeField] private Transform pickupMarker;
-    [Header("Throw")]
+    [Header("Pickup Range")]
     [SerializeField, Min(0.2f)] private float pickupDistance = 2.5f;
-    [SerializeField, Min(0.1f)] private float minimumThrowSpeed = 6f;
-    [SerializeField, Min(0.1f)] private float maximumThrowSpeed = 22f;
-    [SerializeField, Min(0.1f)] private float fullChargeSeconds = 1.5f;
+
+    [Header("THROW CHARGE SETTINGS")]
+    [Tooltip("Seconds held from touching Throw until maximum launch power. Does not change animation speed.")]
+    [InspectorName("Full Charge Seconds")]
+    [SerializeField, Min(0.1f)] private float fullChargeSeconds = 7f;
+
+    [Tooltip("Launch speed limit with a quick drag and release. Low charge can fall short of distant targets.")]
+    [InspectorName("Minimum Throw Speed")]
+    [SerializeField, Min(0.1f)] private float minimumThrowSpeed = 10f;
+
+    [Tooltip("Launch speed limit at full charge. Nearby targets use a slower arc. Does not change animation speed.")]
+    [InspectorName("Maximum Throw Speed")]
+    [FormerlySerializedAs("maximumThrowSpeed")]
+    [SerializeField, Min(0.1f)] private float throwSpeed = 40f;
+
+    [Header("Natural Arc - longer distance takes more time")]
+    [Tooltip("Minimum flight time in seconds, before the distance contribution.")]
+    [SerializeField, Min(0.1f)] private float minimumFlightSeconds = 0.8f;
+    [Tooltip("Extra flight seconds per Unity unit of target distance. Increase for slower, higher arcs.")]
+    [SerializeField, Min(0f)] private float flightSecondsPerUnit = 0.03f;
+    [Tooltip("Minimum arc lift above a straight line between launch and target.")]
+    [SerializeField, Min(0f)] private float minimumArcHeight = 1.5f;
+
+    [Header("Aiming and Trajectory")]
     [SerializeField, Min(1f)] private float aimRayDistance = 100f;
-    [Header("Optional pointer / charge display")]
-    [SerializeField] private RectTransform aimReticle;
-    [SerializeField] private Image chargeFill;
     [Tooltip("Include tower, walls and ground. EXCLUDE Player and pickup Stone layers.")]
     [SerializeField] private LayerMask flightCollisionLayers = ~0;
     [Tooltip("Include solid scenery and stones; the closest hit must be a stone.")]
     [SerializeField] private LayerMask pickupRayLayers = ~0;
     [SerializeField, Range(12, 80)] private int previewSegments = 40;
     [SerializeField, Min(0.02f)] private float previewStep = 0.08f;
-    [Header("Pickup timing in seconds - tune against the clip preview")]
-    [SerializeField, Min(0f)] private float pickupAttachDelay = 1.2f;
-    [SerializeField, Min(0.2f)] private float pickupTotalDuration = 3.85f;
+    [Header("PICKUP - actual playback duration, not a start delay")]
+    [SerializeField, Min(0.2f)] private float pickupDurationSeconds = 2f;
+    [Tooltip("Fraction of the pickup animation where the hand touches the stone. 0.35 means 0.7 seconds in a two-second animation.")]
+    [SerializeField, Range(0f, 0.95f)] private float pickupAttachFraction = 0.35f;
+    [SerializeField] private string pickupLayerName = "Journey Stone Actions";
+    [Tooltip("State name, or full state path including layer and sub-state machines.")]
+    [SerializeField] private string pickupStateName = "Pickup";
+    [SerializeField] private bool logPickupDiagnostics = true;
     [Header("Optional character animation")]
     [SerializeField] private Animator animator;
-    [SerializeField] private string pickupTrigger = "";
     [SerializeField] private string throwTrigger = "";
+    [Header("THROW - stone release timing")]
+    [Tooltip("Seconds between starting the throw animation and releasing the stone from the hand. Increase this if the stone leaves too early. Does not change animation speed.")]
+    [InspectorName("Throw Release Delay Seconds")]
     [SerializeField, Min(0f)] private float releaseDelay = 0.2f;
-    [Header("Optional aiming camera")]
-    [Tooltip("Keep outside Camera. Parent to Player for a shoulder-relative pose.")]
-    [SerializeField] private Transform aimCameraPose;
-    [Tooltip("Camera driver components only. Never put this controller here.")]
-    [SerializeField] private Behaviour[] cameraDriversToPause;
-    [SerializeField, Min(0.1f)] private float cameraBlendSpeed = 10f;
     [Header("Optional sound")]
     [SerializeField] private AudioSource effectsSource;
     [SerializeField] private AudioClip pickupSound;
@@ -73,23 +99,32 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     private bool pickingUp;
     private JourneyThrowableStone[] stones;
     private readonly List<RaycastResult> uiHits = new List<RaycastResult>();
-    private bool aiming, releasing, wasActive, initialized;
-    private int pointerId = int.MinValue;
-    private Vector2 aimScreenPosition;
-    private float chargeStarted;
-    private Vector3 releasedVelocity;
-    private bool cursorOwned, oldCursorVisible;
-    private CursorLockMode oldCursorLock;
-    public float Charge01 => aiming ? Mathf.Clamp01((Time.time - chargeStarted) / Mathf.Max(0.1f, fullChargeSeconds)) : 0f;
-    private float ChargedSpeed => Mathf.Lerp(Mathf.Max(0.1f, minimumThrowSpeed),
-        Mathf.Max(minimumThrowSpeed, maximumThrowSpeed), Charge01);
+    private bool releasing, wasActive, initialized;
+    private Vector3 releaseAimPoint;
+    private int dragPointerId = int.MinValue;
+    private Vector2 dragStart, dragPosition;
+    private Vector2 dragScreenSize;
+    private bool draggingThrow;
+    private float releaseSpeed;
+    private float chargeStartedAt;
+    public float Charge01 => draggingThrow
+        ? Mathf.Clamp01((Time.time - chargeStartedAt) / Mathf.Max(0.1f, fullChargeSeconds)) : 0f;
+    private float ChargedThrowSpeed => Mathf.Lerp(
+        Mathf.Clamp(minimumThrowSpeed, 0.1f, Mathf.Max(0.1f, throwSpeed)),
+        Mathf.Max(0.1f, throwSpeed), Charge01);
+    private Animator pickupAnimator;
+    private float previousAnimatorSpeed, previousLayerWeight;
+    private bool pickupAnimationOwned;
+    private AnimatorCullingMode previousCulling;
+    private RuntimeAnimatorController pickupController;
+    private AnimatorStateInfo previousPickupState;
+    private int pickupLayerIndex, pickupStateHash;
+    private float pickupPlaybackStarted, pickupPlaybackDuration;
+    private float PickupProgress => Mathf.Clamp01((Time.time - pickupPlaybackStarted) / pickupPlaybackDuration);
     private Coroutine releaseRoutine;
-    private bool[] cameraStates;
-    private Vector3 oldCameraPosition;
-    private Quaternion oldCameraRotation;
-    private bool cameraCaptured;
+    private Coroutine hintRoutine;
+    private CanvasGroup hintGroup;
     private int blockThroughFrame = -1;
-    private int aimStartFrame = -1;
     private int pickupPointerId = int.MinValue;
     private bool hasFocus = true, paused;
 
@@ -102,17 +137,17 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         if (levels == null) levels = FindFirstObjectByType<JourneyLevelsController>();
         if (menu == null) menu = FindFirstObjectByType<JourneyMenuController>();
         if (player == null || gameplayCamera == null || handSocket == null || throwOrigin == null ||
-            target == null || stonesRoot == null || throwButton == null || cancelButton == null || levels == null)
+            target == null || stonesRoot == null || levels == null || throwButton == null)
         {
-            Debug.LogError("JourneyStoneThrowController: assign Player, Camera, Hand Socket, Throw Origin, Target, Stones Root, Levels and both UI buttons.", this);
+            Debug.LogError("JourneyStoneThrowController: assign Player, Camera, Hand Socket, Throw Origin, Target, Stones Root, Levels and Throw Button.", this);
             enabled = false;
             return;
         }
         stones = stonesRoot.GetComponentsInChildren<JourneyThrowableStone>(true);
         if (stones.Length == 0) Debug.LogWarning("No JourneyThrowableStone components found under Stones Root.", this);
         if (trajectory != null) { trajectory.useWorldSpace = true; trajectory.enabled = false; }
-        if (aimReticle != null)
-            foreach (var graphic in aimReticle.GetComponentsInChildren<Graphic>(true)) graphic.raycastTarget = false;
+        PrepareHintPanel();
+        ResolveHandAnimator();
         initialized = true;
         UpdateUI();
     }
@@ -128,123 +163,158 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
             return;
         }
         wasActive = true;
-        if (!pickingUp && !aiming && !releasing && pickupPointerId == int.MinValue && Time.frameCount > blockThroughFrame) SetBlock(false);
-        if (held != null && !pickingUp)
+        if (pickingUp)
         {
-            ShowCursor();
-            if (!aiming && Mouse.current != null && (Touchscreen.current == null || !Touchscreen.current.primaryTouch.press.isPressed))
-                aimScreenPosition = Mouse.current.position.ReadValue();
+            if (pickupAnimator == null || !pickupAnimator.isActiveAndEnabled ||
+                pickupAnimator.runtimeAnimatorController != pickupController)
+            {
+                Debug.LogWarning("Pickup canceled: the hand Animator was disabled or its controller changed during playback.", this);
+                CancelPickup();
+                pickupPointerId = int.MinValue;
+                SetBlock(false);
+            }
+            else SamplePickupAnimation();
         }
+        if (!pickingUp && !draggingThrow && pickupPointerId == int.MinValue && Time.frameCount > blockThroughFrame) SetBlock(false);
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = false;
         ReadPointers();
-        if (held != null && !pickingUp && !releasing) DrawPreview();
+        if (held != null && draggingThrow && !pickingUp && !releasing) DrawPreview();
+        else if (trajectory != null) trajectory.enabled = false;
         UpdateUI();
     }
 
     private void LateUpdate()
     {
-        if (!cameraCaptured || gameplayCamera == null || aimCameraPose == null) return;
-        float t = 1f - Mathf.Exp(-cameraBlendSpeed * Time.deltaTime);
-        gameplayCamera.transform.position = Vector3.Lerp(gameplayCamera.transform.position, aimCameraPose.position, t);
-        gameplayCamera.transform.rotation = Quaternion.Slerp(gameplayCamera.transform.rotation, aimCameraPose.rotation, t);
+        if (CanContinueFlight) Cursor.visible = false;
     }
 
     private void ReadPointers()
     {
-        bool touchesPresent = false, ownerPresent = false, pickupPresent = false;
+        if (draggingThrow && dragScreenSize != new Vector2(Screen.width, Screen.height)) CancelThrowDrag();
+        bool touchesPresent = false, pickupPresent = false, dragPresent = false;
         if (Touchscreen.current != null)
         {
             foreach (var touch in Touchscreen.current.touches)
             {
-                bool down = touch.press.wasPressedThisFrame;
                 bool pressed = touch.press.isPressed;
-                bool up = touch.press.wasReleasedThisFrame;
-                if (!pressed && !up) continue;
+                var phase = touch.phase.ReadValue();
+                bool ended = phase == UnityEngine.InputSystem.TouchPhase.Ended;
+                bool canceled = phase == UnityEngine.InputSystem.TouchPhase.Canceled;
+                if (!pressed && !ended && !canceled) continue;
                 touchesPresent = true;
                 int id = touch.touchId.ReadValue();
-                if (id == pointerId) ownerPresent = true;
                 if (id == pickupPointerId && pressed) pickupPresent = true;
-                HandlePointer(id, touch.position.ReadValue(), down, pressed, up);
+                if (id == dragPointerId) dragPresent = true;
+                HandlePointer(id, touch.position.ReadValue(), touch.press.wasPressedThisFrame, ended, canceled);
+                if (id == dragPointerId) dragPresent = true;
             }
         }
         if (!touchesPresent && Mouse.current != null)
         {
             var mouse = Mouse.current;
-            if (pointerId == -1 && mouse.leftButton.isPressed) ownerPresent = true;
             if (pickupPointerId == -1 && mouse.leftButton.isPressed) pickupPresent = true;
             HandlePointer(-1, mouse.position.ReadValue(), mouse.leftButton.wasPressedThisFrame,
-                mouse.leftButton.isPressed, mouse.leftButton.wasReleasedThisFrame);
+                mouse.leftButton.wasReleasedThisFrame, false);
+            dragPresent = dragPointerId == -1 && mouse.leftButton.isPressed;
         }
-        // Lost touches cancel instead of accidentally throwing on focus/device loss.
-        if (aiming && !ownerPresent && Time.frameCount > aimStartFrame && pointerId != int.MinValue) CancelAim();
+        if (draggingThrow && !dragPresent) CancelThrowDrag();
         if (!pickupPresent && Time.frameCount > blockThroughFrame) pickupPointerId = int.MinValue;
     }
 
-    private void HandlePointer(int id, Vector2 position, bool down, bool pressed, bool up)
+    private void HandlePointer(int id, Vector2 position, bool down, bool ended, bool canceled)
     {
-        Selectable ui = down || up ? SelectableAt(position) : null;
-        if (down && ui == cancelButton && cancelButton.gameObject.activeInHierarchy)
-        { CancelAim(); return; }
-        if (releasing || pickingUp) return;
-        if (aiming)
+        if (draggingThrow)
         {
-            if (id != pointerId) return;
-            aimScreenPosition = position;
-            if (up)
+            if (id != dragPointerId) return;
+            if (canceled) { CancelThrowDrag(); return; }
+            dragPosition = position;
+            if (ended)
             {
-                if (ui == cancelButton) CancelAim();
-                else BeginRelease();
+                Vector2 delta = position - dragStart;
+                float threshold = minimumDragDistance * Mathf.Min(Screen.width, Screen.height);
+                bool valid = delta.sqrMagnitude >= threshold * threshold &&
+                    gameplayCamera.pixelRect.Contains(position);
+                float speed = ChargedThrowSpeed;
+                CancelThrowDrag();
+                if (valid) ThrowHeldStone(position, speed);
             }
             return;
         }
-        if (!down) return;
-        if (held != null)
-        {
-            if ((ui == throwButton && throwButton.IsInteractable()) || (id == -1 && ui == null))
-                BeginAim(id, position);
-            return;
-        }
-        if (ui != null || LightBrushPuzzle.IsMovementBlocked) return;
+        if (!down || canceled || releasing || pickingUp) return;
+        if (held == null) { TryPickUp(id, position); return; }
+        if (throwButton == null || !throwButton.isActiveAndEnabled || !throwButton.IsInteractable() ||
+            SelectableAt(position) != throwButton) return;
+        draggingThrow = true;
+        chargeStartedAt = Time.time;
+        dragPointerId = id;
+        dragStart = dragPosition = position;
+        dragScreenSize = new Vector2(Screen.width, Screen.height);
+        // Capture only the throw gesture; ordinary carrying leaves both controls active.
+        SetBlock(true);
+    }
+
+    private void CancelThrowDrag()
+    {
+        draggingThrow = false;
+        dragPointerId = int.MinValue;
+        blockThroughFrame = Time.frameCount + 1;
+    }
+
+    private void TryPickUp(int id, Vector2 position)
+    {
+        // A fresh touch on a nearby stone starts pickup; carrying is handled by the button drag.
+        if (held != null || releasing || pickingUp || SelectableAt(position) != null ||
+            LightBrushPuzzle.IsMovementBlocked) return;
         Ray ray = gameplayCamera.ScreenPointToRay(position);
         if (!Physics.Raycast(ray, out RaycastHit hit, 100f, pickupRayLayers, QueryTriggerInteraction.Ignore)) return;
         JourneyThrowableStone stone = hit.collider.GetComponentInParent<JourneyThrowableStone>();
         if (stone == null || !stone.transform.IsChildOf(stonesRoot) || !stone.CanPickUp ||
             Vector3.Distance(player.position, stone.transform.position) > pickupDistance) return;
+        if (!BeginPickupAnimation()) return;
         pickingUp = true;
         pickupCandidate = stone;
-        aimScreenPosition = id == -1 ? position : new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
         pickupPointerId = id;
         SetBlock(true);
-        Trigger(pickupTrigger);
         pickupRoutine = StartCoroutine(PickupSequence());
     }
 
     private IEnumerator PickupSequence()
     {
-        float attachDelay = Mathf.Max(0f, pickupAttachDelay);
-        yield return new WaitForSeconds(attachDelay);
-        if (!CanContinueFlight || pickupCandidate == null || !pickupCandidate.CanPickUp ||
-            !pickupCandidate.PickUp(handSocket))
+        // Playback already started at normalized time zero on the pointer-down frame.
+        // This wait only determines when the stone attaches to the hand.
+        yield return null;
+        LogPickupClip();
+        bool attached = false;
+        while (true)
         {
-            pickingUp = false;
-            pickupCandidate = null;
-            pickupRoutine = null;
-            blockThroughFrame = Time.frameCount + 1;
-            yield break;
+            if (!CanContinueFlight || pickupAnimator == null ||
+                pickupAnimator.runtimeAnimatorController != pickupController)
+            { CancelPickup(); yield break; }
+            float progress = PickupProgress;
+            if (!attached && progress >= Mathf.Clamp01(pickupAttachFraction))
+            {
+                if (pickupCandidate == null || !pickupCandidate.CanPickUp || !pickupCandidate.PickUp(handSocket))
+                { CancelPickup(); yield break; }
+                held = pickupCandidate;
+                attached = true;
+                PlaySound(pickupSound);
+            }
+            if (progress >= 1f) break;
+            yield return null;
         }
-        held = pickupCandidate;
-        PlaySound(pickupSound);
-        // PickUp itself eases the stone into the socket over 0.2 seconds.
-        yield return new WaitForSeconds(Mathf.Max(0.2f, pickupTotalDuration - attachDelay));
+        RestorePickupAnimation();
         pickingUp = false;
         pickupCandidate = null;
         pickupRoutine = null;
         blockThroughFrame = Time.frameCount + 1;
-        if (held != null && CanContinueFlight) ShowCursor();
+        ShowPickupHint();
         UpdateUI();
     }
 
     private void CancelPickup()
     {
+        RestorePickupAnimation();
         if (!pickingUp) return;
         if (pickupRoutine != null) StopCoroutine(pickupRoutine);
         pickupRoutine = null;
@@ -252,54 +322,42 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         if (held == pickupCandidate) held = null;
         pickupCandidate = null;
         pickingUp = false;
+        blockThroughFrame = Time.frameCount + 1;
     }
 
-    private void BeginAim(int id, Vector2 position)
+    private Vector3 AimPointAt(Vector2 screenPosition)
     {
-        aiming = true;
-        aimStartFrame = Time.frameCount;
-        pickupPointerId = int.MinValue;
-        pointerId = id;
-        aimScreenPosition = position;
-        chargeStarted = Time.time;
-        SetBlock(true);
-        CaptureCamera();
-    }
-
-    private Vector3 Velocity()
-    {
-        Ray ray = gameplayCamera.ScreenPointToRay(aimScreenPosition);
-        Vector3 aimPoint = Physics.Raycast(ray, out RaycastHit hit, aimRayDistance,
-            flightCollisionLayers, QueryTriggerInteraction.Ignore) ? hit.point : ray.GetPoint(aimRayDistance);
-        Vector3 direction = aimPoint - throwOrigin.position;
-        if (direction.sqrMagnitude < 0.0001f) direction = ray.direction;
-        // No tower reference, snap, ballistic auto-correction or aim assist.
-        // Gravity naturally bends the path, shown in the trajectory preview.
-        return direction.normalized * ChargedSpeed;
-    }
-
-    private void ShowCursor()
-    {
-        if (!cursorOwned)
+        Ray ray = gameplayCamera.ScreenPointToRay(screenPosition);
+        // Ignore the player's own body and pickup stones, even with an All Layers mask.
+        float closest = aimRayDistance;
+        Vector3 point = ray.GetPoint(closest);
+        foreach (RaycastHit hit in Physics.RaycastAll(ray, aimRayDistance,
+                     flightCollisionLayers, QueryTriggerInteraction.Ignore))
         {
-            oldCursorVisible = Cursor.visible;
-            oldCursorLock = Cursor.lockState;
-            cursorOwned = true;
+            if (hit.transform.IsChildOf(player) ||
+                hit.collider.GetComponentInParent<JourneyThrowableStone>() != null || hit.distance >= closest) continue;
+            closest = hit.distance;
+            point = hit.point;
         }
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        return point;
     }
 
-    private void RestoreCursor()
+    private Vector3 VelocityTo(Vector3 aimPoint, float speedLimit, out float flightTime)
     {
-        if (!cursorOwned) return;
-        cursorOwned = false;
-        // The menu owns the cursor when it is open.
-        if (menu == null || !menu.IsMenuOpen)
+        Vector3 displacement = aimPoint - throwOrigin.position;
+        float gravity = Physics.gravity.magnitude;
+        flightTime = Mathf.Max(0.1f, minimumFlightSeconds) +
+            displacement.magnitude * Mathf.Max(0f, flightSecondsPerUnit);
+        if (gravity > 0.0001f)
         {
-            Cursor.lockState = oldCursorLock;
-            Cursor.visible = oldCursorVisible;
+            // The arc rises g*T*T/8 above the straight launch-to-target chord at halfway.
+            float arcTime = Mathf.Sqrt(8f * Mathf.Max(0f, minimumArcHeight) / gravity);
+            flightTime = Mathf.Max(flightTime, arcTime);
         }
+        Vector3 velocity = (displacement - 0.5f * Physics.gravity * flightTime * flightTime) / flightTime;
+        // Charge sets the available energy. Insufficient charge falls short instead
+        // of silently supplying extra power or moving the stone along a scripted path.
+        return Vector3.ClampMagnitude(velocity, Mathf.Max(0.1f, speedLimit));
     }
 
     private void DrawPreview()
@@ -308,11 +366,13 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         trajectory.enabled = true;
         int count = Mathf.Clamp(previewSegments, 12, 80);
         trajectory.positionCount = count + 1;
-        Vector3 origin = throwOrigin.position, previous = origin, velocity = Velocity();
+        Vector3 origin = throwOrigin.position, previous = origin;
+        Vector3 velocity = VelocityTo(AimPointAt(dragPosition), ChargedThrowSpeed, out float flightTime);
+        float step = Mathf.Max(Mathf.Max(0.02f, previewStep), flightTime / count);
         trajectory.SetPosition(0, origin);
         for (int i = 1; i <= count; i++)
         {
-            float time = i * Mathf.Max(0.02f, previewStep);
+            float time = i * step;
             Vector3 point = origin + velocity * time + Physics.gravity * (0.5f * time * time);
             Vector3 delta = point - previous;
             if (Physics.SphereCast(previous, held.Radius, delta.normalized, out RaycastHit hit,
@@ -327,15 +387,16 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         }
     }
 
-    private void BeginRelease()
+    private void ThrowHeldStone(Vector2 screenPosition, float speed)
     {
-        releasedVelocity = Velocity(); // Snapshot charge and direction BEFORE leaving aim mode.
-        aiming = false;
+        if (!CanContinueFlight || held == null || pickingUp || releasing) return;
+        releaseAimPoint = AimPointAt(screenPosition);
+        releaseSpeed = speed;
         releasing = true;
-        pointerId = int.MinValue;
         if (trajectory != null) trajectory.enabled = false;
         Trigger(throwTrigger);
         releaseRoutine = StartCoroutine(ReleaseAfterAnimation());
+        UpdateUI();
     }
 
     private IEnumerator ReleaseAfterAnimation()
@@ -343,26 +404,22 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         yield return new WaitForSeconds(Mathf.Max(0f, releaseDelay));
         if (held != null && CanContinueFlight)
         {
-            held.Launch(throwOrigin.position, releasedVelocity, flightCollisionLayers, this);
+            held.Launch(throwOrigin.position, VelocityTo(releaseAimPoint, releaseSpeed, out _), flightCollisionLayers, this);
             held = null;
-            RestoreCursor();
             PlaySound(throwSound);
         }
         releasing = false;
         releaseRoutine = null;
-        RestoreCamera();
         blockThroughFrame = Time.frameCount + 1;
     }
 
     public void CancelAim()
     {
+        CancelThrowDrag();
         if (releaseRoutine != null) StopCoroutine(releaseRoutine);
         releaseRoutine = null;
         releasing = false;
-        aiming = false;
-        pointerId = int.MinValue;
         if (trajectory != null) trajectory.enabled = false;
-        RestoreCamera();
         blockThroughFrame = Time.frameCount + 1;
     }
 
@@ -396,28 +453,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
             throwButton.gameObject.SetActive(active && held != null && !pickingUp);
             throwButton.interactable = !releasing;
         }
-        if (cancelButton != null) cancelButton.gameObject.SetActive(active && aiming);
-        if (chargeFill != null)
-        {
-            chargeFill.raycastTarget = false;
-            chargeFill.gameObject.SetActive(active && held != null && !pickingUp);
-            chargeFill.fillAmount = Charge01;
-        }
-        if (aimReticle != null)
-        {
-            aimReticle.gameObject.SetActive(active && held != null && !pickingUp);
-            var parent = aimReticle.parent as RectTransform;
-            var canvas = aimReticle.GetComponentInParent<Canvas>();
-            Camera uiCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
-            if (parent != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, aimScreenPosition, uiCamera, out Vector2 local))
-                aimReticle.localPosition = new Vector3(local.x, local.y, aimReticle.localPosition.z);
-        }
-        if (hintText != null)
-        {
-            hintText.gameObject.SetActive(active);
-            hintText.text = pickingUp ? "در حال برداشتن سنگ" : releasing ? "" : aiming ? "نگه دار تا قدرت بیشتر شود؛ رها کن تا پرتاب شود" :
-                held != null ? "دکمه پرتاب را نگه دار" : "نزدیک سنگ برو و روی آن بزن";
-        }
+        if (!active || held == null || pickingUp || releasing) HidePickupHint();
         if (pickupMarker != null)
         {
             JourneyThrowableStone closest = null;
@@ -434,50 +470,190 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         }
     }
 
-    private void CaptureCamera()
+    private void PrepareHintPanel()
     {
-        if (aimCameraPose == null || gameplayCamera == null) return;
-        oldCameraPosition = gameplayCamera.transform.position;
-        oldCameraRotation = gameplayCamera.transform.rotation;
-        int count = cameraDriversToPause != null ? cameraDriversToPause.Length : 0;
-        cameraStates = new bool[count];
-        for (int i = 0; i < count; i++)
+        if (hintImage == null) return;
+        if (transform.IsChildOf(hintImage.transform) ||
+            (throwButton != null && throwButton.transform.IsChildOf(hintImage.transform)))
         {
-            Behaviour driver = cameraDriversToPause[i];
-            if (driver == null || driver == this) continue;
-            cameraStates[i] = driver.enabled;
-            driver.enabled = false;
+            Debug.LogWarning("Hint Image must be a separate panel, not a parent of the controller or Throw button.", this);
+            hintImage = null;
+            return;
         }
-        cameraCaptured = true;
+        hintGroup = hintImage.GetComponent<CanvasGroup>();
+        if (hintGroup == null) hintGroup = hintImage.gameObject.AddComponent<CanvasGroup>();
+        hintGroup.interactable = false;
+        hintGroup.blocksRaycasts = false;
+        foreach (Graphic graphic in hintImage.GetComponentsInChildren<Graphic>(true)) graphic.raycastTarget = false;
+        HidePickupHint();
     }
 
-    private void RestoreCamera()
+    private void ShowPickupHint()
     {
-        if (!cameraCaptured) return;
-        cameraCaptured = false;
-        if (gameplayCamera != null) gameplayCamera.transform.SetPositionAndRotation(oldCameraPosition, oldCameraRotation);
-        for (int i = 0; i < cameraStates.Length; i++)
-            if (cameraDriversToPause[i] != null && cameraDriversToPause[i] != this)
-                cameraDriversToPause[i].enabled = cameraStates[i];
+        if (hintGroup == null || hintImage == null || !CanContinueFlight) return;
+        HidePickupHint();
+        hintImage.gameObject.SetActive(true);
+        hintRoutine = StartCoroutine(AnimatePickupHint());
+    }
+
+    private IEnumerator AnimatePickupHint()
+    {
+        yield return FadeHint(0f, 1f, hintFadeInSeconds);
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, hintVisibleSeconds));
+        yield return FadeHint(1f, 0f, hintFadeOutSeconds);
+        if (hintImage != null) hintImage.gameObject.SetActive(false);
+        hintRoutine = null;
+    }
+
+    private IEnumerator FadeHint(float from, float to, float duration)
+    {
+        if (hintGroup == null) yield break;
+        float elapsed = 0f;
+        hintGroup.alpha = from;
+        while (elapsed < Mathf.Max(0f, duration))
+        {
+            yield return null;
+            if (hintGroup == null) yield break;
+            elapsed += Time.unscaledDeltaTime;
+            hintGroup.alpha = Mathf.Lerp(from, to, Mathf.SmoothStep(0f, 1f, elapsed / duration));
+        }
+        hintGroup.alpha = to;
+    }
+
+    private void HidePickupHint()
+    {
+        if (hintRoutine != null) StopCoroutine(hintRoutine);
+        hintRoutine = null;
+        if (hintGroup != null) hintGroup.alpha = 0f;
+        if (hintImage != null) hintImage.gameObject.SetActive(false);
+    }
+
+    private void ResolveHandAnimator()
+    {
+        // The animator driving the actual hand is authoritative, not an unrelated Inspector reference.
+        Animator handAnimator = handSocket != null ? handSocket.GetComponentInParent<Animator>() : null;
+        if (handAnimator != null && animator != handAnimator)
+        {
+            if (animator != null)
+                Debug.LogWarning("Stone pickup: using the Animator above Hand Socket instead of the unrelated assigned Animator.", this);
+            animator = handAnimator;
+        }
+    }
+
+    private bool BeginPickupAnimation()
+    {
+        RestorePickupAnimation();
+        ResolveHandAnimator();
+        if (animator == null || !animator.isActiveAndEnabled || animator.runtimeAnimatorController == null)
+        {
+            Debug.LogError("Pickup needs the enabled Animator driving Hand Socket and a Runtime Animator Controller.", this);
+            return false;
+        }
+        pickupLayerIndex = animator.GetLayerIndex(pickupLayerName);
+        if (pickupLayerIndex < 0)
+        {
+            Debug.LogError("Pickup layer not found: " + pickupLayerName + ". Enter its exact name from the active Animator window.", this);
+            return false;
+        }
+        string path = pickupStateName.StartsWith(pickupLayerName + ".", System.StringComparison.Ordinal)
+            ? pickupStateName : pickupLayerName + "." + pickupStateName;
+        pickupStateHash = Animator.StringToHash(path);
+        if (!animator.HasState(pickupLayerIndex, pickupStateHash))
+        {
+            Debug.LogError("Pickup state not found: " + path + ". Use the Animator state name, not the clip filename.", this);
+            return false;
+        }
+        pickupAnimator = animator;
+        pickupController = animator.runtimeAnimatorController;
+        previousAnimatorSpeed = animator.speed;
+        previousCulling = animator.cullingMode;
+        previousLayerWeight = animator.GetLayerWeight(pickupLayerIndex);
+        previousPickupState = animator.GetCurrentAnimatorStateInfo(pickupLayerIndex);
+        pickupPlaybackDuration = Mathf.Max(0.2f, pickupDurationSeconds);
+        pickupPlaybackStarted = Time.time;
+        pickupAnimationOwned = true;
+        animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        // Clear stale action triggers so they cannot restart the pickup/throw on restore.
+        foreach (AnimatorControllerParameter parameter in animator.parameters)
+            if (parameter.type == AnimatorControllerParameterType.Trigger &&
+                (parameter.name == "Pickup" || parameter.name == throwTrigger)) animator.ResetTrigger(parameter.name);
+        SamplePickupAnimation();
+        if (logPickupDiagnostics)
+            Debug.Log("Pickup: animator=" + animator.name + ", controller=" + pickupController.name +
+                ", state=" + path + ", playback duration=" + pickupPlaybackDuration + "s, starts now.", this);
+        return true;
+    }
+
+    private void SamplePickupAnimation()
+    {
+        if (!pickupAnimationOwned || pickupAnimator == null) return;
+        // Let Unity evaluate the pose in its normal animation phase. We control the
+        // normalized timeline, so state Speed/PickupSpeed cannot rush through it.
+        pickupAnimator.speed = 0f;
+        pickupAnimator.SetLayerWeight(pickupLayerIndex, 1f);
+        pickupAnimator.Play(pickupStateHash, pickupLayerIndex, Mathf.Min(PickupProgress, 0.9999f));
+    }
+
+    private void LogPickupClip()
+    {
+        if (pickupAnimator == null) return;
+        AnimatorClipInfo[] clips = pickupAnimator.GetCurrentAnimatorClipInfo(pickupLayerIndex);
+        if (clips.Length == 0)
+            Debug.LogWarning("Pickup state has no active clip. Check its Motion field and layer setup.", this);
+        foreach (AnimatorClipInfo info in clips)
+        {
+            if (info.clip == null) continue;
+            if (logPickupDiagnostics)
+                Debug.Log("Pickup clip=" + info.clip.name + ", source length=" + info.clip.length +
+                    "s, Humanoid=" + info.clip.isHumanMotion + ", requested duration=" + pickupPlaybackDuration + "s.", this);
+            if (pickupAnimator.isHuman && !info.clip.isHumanMotion)
+                Debug.LogWarning("Pickup uses a Generic clip on a Humanoid Animator. Matching bone names is not Humanoid retargeting. Re-import the source animation as Humanoid with a valid Avatar.", this);
+        }
+    }
+
+    private void RestorePickupAnimation()
+    {
+        if (!pickupAnimationOwned) return;
+        pickupAnimationOwned = false;
+        if (pickupAnimator != null)
+        {
+            if (pickupAnimator.runtimeAnimatorController == pickupController &&
+                pickupAnimator.HasState(pickupLayerIndex, previousPickupState.fullPathHash))
+            {
+                pickupAnimator.Play(previousPickupState.fullPathHash, pickupLayerIndex, previousPickupState.normalizedTime);
+                pickupAnimator.SetLayerWeight(pickupLayerIndex, previousLayerWeight);
+            }
+            pickupAnimator.speed = previousAnimatorSpeed;
+            pickupAnimator.cullingMode = previousCulling;
+        }
+        pickupAnimator = null;
+        pickupController = null;
     }
 
     private void Trigger(string parameter)
-    { if (animator != null && !string.IsNullOrEmpty(parameter)) animator.SetTrigger(parameter); }
+    {
+        if (animator == null || string.IsNullOrEmpty(parameter)) return;
+        if (animator.runtimeAnimatorController != null)
+            foreach (AnimatorControllerParameter item in animator.parameters)
+                if (item.name == parameter && item.type == AnimatorControllerParameterType.Trigger)
+                { animator.SetTrigger(parameter); return; }
+        Debug.LogWarning("Stone animation: the hand Animator has no Trigger named '" + parameter +
+            "'. Check Throw Trigger and the assigned Animator Controller.", this);
+    }
     private void PlaySound(AudioClip clip)
     { if (effectsSource != null && clip != null) effectsSource.PlayOneShot(clip); }
 
     public void ResetRound()
     {
+        HidePickupHint();
+        CancelThrowDrag();
         CancelPickup();
         if (releaseRoutine != null) StopCoroutine(releaseRoutine);
         releaseRoutine = null;
-        aiming = releasing = false;
+        releasing = false;
         pickupPointerId = int.MinValue;
-        pointerId = int.MinValue;
         held = null;
-        RestoreCursor();
         if (trajectory != null) trajectory.enabled = false;
-        RestoreCamera();
         SetBlock(false);
         if (stones != null)
             foreach (var stone in stones) if (stone != null) stone.ResetStone();
@@ -490,10 +666,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         ResetRound();
         wasActive = false;
         if (throwButton != null) throwButton.gameObject.SetActive(false);
-        if (cancelButton != null) cancelButton.gameObject.SetActive(false);
-        if (hintText != null) hintText.gameObject.SetActive(false);
+        HidePickupHint();
         if (pickupMarker != null) pickupMarker.gameObject.SetActive(false);
-        if (aimReticle != null) aimReticle.gameObject.SetActive(false);
-        if (chargeFill != null) chargeFill.gameObject.SetActive(false);
     }
 }
