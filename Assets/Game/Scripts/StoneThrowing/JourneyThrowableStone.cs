@@ -9,7 +9,9 @@ public sealed class JourneyThrowableStone : MonoBehaviour
     [SerializeField, Min(0.01f)] private float mass = 2f;
     [SerializeField, Min(0f)] private float linearDamping = 0f;
     [SerializeField, Min(0f)] private float angularDamping = 1f;
-    [SerializeField, Min(1f)] private float resetBelowStart = 40f;
+    [Tooltip("Destroy any unheld stone below this WORLD Y, including scored stones.")]
+    [SerializeField] private float destroyBelowY = -100f;
+    private bool destroying;
     [SerializeField, Min(0.01f)] private float pickupSpeedLimit = 0.3f;
     private Rigidbody body;
     private Collider hitCollider;
@@ -138,8 +140,11 @@ public sealed class JourneyThrowableStone : MonoBehaviour
     {
         if (!initialized || held) return;
         if (thrown) flightAge += Time.fixedDeltaTime;
-        // Only recover unscored misses that fall out of the environment.
-        if (!spent && body.position.y < originalPosition.y - resetBelowStart) ResetStone();
+        if (body.position.y < destroyBelowY)
+        {
+            destroying = true;
+            Destroy(gameObject);
+        }
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -157,7 +162,7 @@ public sealed class JourneyThrowableStone : MonoBehaviour
 
     public void ResetStone()
     {
-        if (!initialized) return;
+        if (!initialized || destroying) return;
         if (motion != null) StopCoroutine(motion);
         motion = null;
         held = spent = thrown = false;
