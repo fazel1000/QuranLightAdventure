@@ -14,7 +14,7 @@ public class LightBrushPuzzle : MonoBehaviour
     [SerializeField] private Camera puzzleCamera;
     [SerializeField] private LayerMask letterLayer;
 
-    [Header("Surah Al-Ikhlas")]
+    [Header("AREA 1 - Surah Al-Ikhlas")]
     [Tooltip("All assigned puzzles are visible and can be solved in any order. Off uses only Bismillah.")]
     [FormerlySerializedAs("enableIkhlasSequence")]
     [SerializeField] private bool enableIkhlasPuzzles;
@@ -32,22 +32,43 @@ public class LightBrushPuzzle : MonoBehaviour
     [Header("Ayah 4 - Wa Lam Yakun Lahu Kufuwan Ahad - 5 words")]
     [SerializeField] private Transform[] ayah4Words = new Transform[5];
 
-    [Header("Score Per Puzzle")]
+    [Header("AREA 1 - Coins Per Puzzle")]
+    [InspectorName("Bismillah Coins")]
     [SerializeField, Min(0)] private int bismillahScore = 10;
+    [InspectorName("Ayah1 Coins")]
     [SerializeField, Min(0)] private int ayah1Score = 10;
+    [InspectorName("Ayah2 Coins")]
     [SerializeField, Min(0)] private int ayah2Score = 10;
+    [InspectorName("Ayah3 Coins")]
     [SerializeField, Min(0)] private int ayah3Score = 10;
+    [InspectorName("Ayah4 Coins")]
     [SerializeField, Min(0)] private int ayah4Score = 10;
 
-    [Header("Score UI")]
-    [SerializeField] private global::RTLTMPro.RTLTextMeshPro scoreText;
-    [SerializeField] private string scorePrefix = "امتیاز: ";
+    [Header("AREA 2 - Letter Puzzles")]
+    [Tooltip("Enable the two letter puzzles below. Level 1 references are kept separately above.")]
+    [SerializeField] private bool enableLevel2LetterPuzzles;
+    [Header("AREA 2 - Salam Alaykom - 9 letters")]
+    [Tooltip("Reading order: س، ل، ا، م، ع، ل، ی، ک، م. Each slot must reference its own letter object.")]
+    [SerializeField] private Transform[] salamAlaykomLetters = new Transform[9];
+    [InspectorName("SalamAlaykom Coins")]
+    [SerializeField, Min(0)] private int salamAlaykomScore = 10;
+    [Header("AREA 2 - Al Hamdolellah - 8 letters")]
+    [Tooltip("Reading order: ا، ل، ح، م، د، ل، ل، ه. Repeated letters must be different objects.")]
+    [SerializeField] private Transform[] alHamdolellahLetters = new Transform[8];
+    [InspectorName("AlHamdolellah Coins")]
+    [SerializeField, Min(0)] private int alHamdolellahScore = 10;
+
+    [Header("Coins UI")]
+    [FormerlySerializedAs("scoreText")]
+    [SerializeField] private global::RTLTMPro.RTLTextMeshPro coinCountText;
+    [SerializeField] private UnityEngine.UI.Image coinImage;
+    [SerializeField] private Sprite coinSprite;
     [SerializeField] private bool usePersianDigits = true;
     [SerializeField] private UnityEvent<int> onScoreChanged = new UnityEvent<int>();
 
     [global::System.Serializable]
     public sealed class PuzzleFinishedEvent : UnityEvent<int> { }
-    [Header("Each Puzzle Finished (1 = Bismillah, 5 = Ayah 4)")]
+    [Header("Puzzle Finished: Area 1 = 1-5; Area 2 = 6-7")]
     [SerializeField] private PuzzleFinishedEvent onPuzzleCompleted = new PuzzleFinishedEvent();
 
     [Header("Light Line")]
@@ -97,7 +118,9 @@ public class LightBrushPuzzle : MonoBehaviour
     private int runVersion;
     private bool[] solvedPuzzles;
     private bool[] playablePuzzles;
+    private int playablePuzzleCount;
     public int TotalScore { get; private set; }
+    public int TotalCoins => TotalScore;
     public int SolvedPuzzleCount { get; private set; }
     public bool IsAllPuzzlesCompleted => IsSequenceCompleted;
     private readonly List<GameObject> transientEffects = new List<GameObject>();
@@ -351,7 +374,7 @@ public class LightBrushPuzzle : MonoBehaviour
         SolvedPuzzleCount++;
         TotalScore = (int)global::System.Math.Min(int.MaxValue,
             (long)TotalScore + GetPuzzleScore(finishedPuzzle));
-        IsSequenceCompleted = SolvedPuzzleCount == wordGroups.Length;
+        IsSequenceCompleted = SolvedPuzzleCount == playablePuzzleCount;
         completed = IsSequenceCompleted;
         currentLetter = 0;
         RefreshScoreDisplay();
@@ -377,6 +400,8 @@ public class LightBrushPuzzle : MonoBehaviour
             case 2: points = ayah2Score; break;
             case 3: points = ayah3Score; break;
             case 4: points = ayah4Score; break;
+            case 5: points = salamAlaykomScore; break;
+            case 6: points = alHamdolellahScore; break;
             default: points = 0; break;
         }
         return Mathf.Max(0, points);
@@ -389,7 +414,9 @@ public class LightBrushPuzzle : MonoBehaviour
     }
 
     // Award once per successfully assessed recording. Examples: 55% -> 5 points.
-    public void AddVoicePoints(int points)
+    public void AddVoicePoints(int points) => AddCoins(points);
+
+    public void AddCoins(int points)
     {
         if (points <= 0) return;
         TotalScore = (int)global::System.Math.Min(int.MaxValue, (long)TotalScore + points);
@@ -399,7 +426,12 @@ public class LightBrushPuzzle : MonoBehaviour
 
     public void RefreshScoreDisplay()
     {
-        if (scoreText == null) return;
+        if (coinImage != null)
+        {
+            if (coinSprite != null) coinImage.sprite = coinSprite;
+            coinImage.raycastTarget = false;
+        }
+        if (coinCountText == null) return;
         string number = TotalScore.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
         if (usePersianDigits)
         {
@@ -409,7 +441,7 @@ public class LightBrushPuzzle : MonoBehaviour
                     digits[i] = (char)('۰' + digits[i] - '0');
             number = new string(digits);
         }
-        scoreText.text = (scorePrefix ?? string.Empty) + number;
+        coinCountText.text = number;
     }
 
     private void OnEnable()
@@ -443,9 +475,9 @@ public class LightBrushPuzzle : MonoBehaviour
         drawing = false;
         completed = false;
         IsSequenceCompleted = false;
-        wordGroups = enableIkhlasPuzzles
-            ? new[] { bismillahWords, ayah1Words, ayah2Words, ayah3Words, ayah4Words }
-            : new[] { bismillahWords };
+        // Fixed slots preserve existing Level 1 puzzle numbers and event IDs.
+        wordGroups = new[] { bismillahWords, ayah1Words, ayah2Words,
+            ayah3Words, ayah4Words, salamAlaykomLetters, alHamdolellahLetters };
         solvedPuzzles = new bool[wordGroups.Length];
         SolvedPuzzleCount = 0;
         TotalScore = 0;
@@ -459,9 +491,10 @@ public class LightBrushPuzzle : MonoBehaviour
     {
         playablePuzzles = new bool[wordGroups.Length];
         var assigned = new List<Transform>();
-        int playableCount = 0;
+        playablePuzzleCount = 0;
         for (int group = 0; group < wordGroups.Length; group++)
         {
+            if (!IsGroupEnabled(group)) continue;
             string problem = CheckWordGroup(group, assigned);
             if (problem != null)
             {
@@ -470,21 +503,28 @@ public class LightBrushPuzzle : MonoBehaviour
                 continue;
             }
             playablePuzzles[group] = true;
-            playableCount++;
+            playablePuzzleCount++;
             assigned.AddRange(wordGroups[group]);
         }
 
-        return playableCount > 0 || ConfigurationError(
+        return playablePuzzleCount > 0 || ConfigurationError(
             "No playable puzzle. Fully assign at least one word list with valid Colliders and Letter Layer.");
+    }
+
+    private bool IsGroupEnabled(int group)
+    {
+        if (group == 0) return true;
+        return group < 5 ? enableIkhlasPuzzles : enableLevel2LetterPuzzles;
     }
 
     private string CheckWordGroup(int group, List<Transform> assigned)
     {
-        int[] requiredCounts = { 4, 4, 2, 4, 5 };
+        int[] requiredCounts = { 4, 4, 2, 4, 5, 9, 8 };
         Transform[] words = wordGroups[group];
+        bool exactCount = group >= 5 || enableIkhlasPuzzles;
         if (words == null || words.Length < 2 ||
-            (enableIkhlasPuzzles && words.Length != requiredCounts[group]))
-            return "Expected " + (enableIkhlasPuzzles ? requiredCounts[group].ToString() : "at least 2") + " words.";
+            (exactCount && words.Length != requiredCounts[group]))
+            return "Expected " + (exactCount ? requiredCounts[group].ToString() : "at least 2") + " word/letter objects.";
 
         // Validate locally before reserving any references for this group.
         var candidates = new List<Transform>(assigned);
@@ -514,8 +554,10 @@ public class LightBrushPuzzle : MonoBehaviour
 
     private void ShowAllWords()
     {
-        foreach (Transform[] words in wordGroups)
+        for (int group = 0; group < wordGroups.Length; group++)
         {
+            if (!playablePuzzles[group]) continue;
+            Transform[] words = wordGroups[group];
             if (words == null) continue;
             foreach (Transform word in words)
                 if (word != null) word.gameObject.SetActive(true);

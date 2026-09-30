@@ -11,9 +11,7 @@ using UnityEngine.Serialization;
 public sealed class JourneyStoneThrowController : MonoBehaviour
 {
     [Header("Scene references")]
-    [SerializeField] private JourneyLevelsController levels;
     [SerializeField] private JourneyMenuController menu;
-    [SerializeField, Min(1)] private int activeLevel = 2;
     [SerializeField] private Transform player;
     [SerializeField] private Camera gameplayCamera;
     [SerializeField] private Transform handSocket;
@@ -91,8 +89,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     private static readonly HashSet<JourneyStoneThrowController> blockers = new HashSet<JourneyStoneThrowController>();
     public static bool IsMovementBlocked => blockers.Count != 0;
     public JourneyStoneTower Target => target;
-    public bool CanContinueFlight => initialized && hasFocus && !paused && isActiveAndEnabled && levels != null && levels.SelectedLevelNumber == activeLevel
-        && (menu == null || !menu.IsMenuOpen);
+    public bool CanContinueFlight => initialized && hasFocus && !paused && isActiveAndEnabled && menu != null && menu.IsGameplayActive;
     private JourneyThrowableStone held;
     private JourneyThrowableStone pickupCandidate;
     private Coroutine pickupRoutine;
@@ -134,12 +131,11 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     private void Start()
     {
         if (gameplayCamera == null) gameplayCamera = Camera.main;
-        if (levels == null) levels = FindFirstObjectByType<JourneyLevelsController>();
         if (menu == null) menu = FindFirstObjectByType<JourneyMenuController>();
         if (player == null || gameplayCamera == null || handSocket == null || throwOrigin == null ||
-            target == null || stonesRoot == null || levels == null || throwButton == null)
+            target == null || stonesRoot == null || menu == null || throwButton == null)
         {
-            Debug.LogError("JourneyStoneThrowController: assign Player, Camera, Hand Socket, Throw Origin, Target, Stones Root, Levels and Throw Button.", this);
+            Debug.LogError("JourneyStoneThrowController: assign Player, Camera, Hand Socket, Throw Origin, Target, Stones Root, Menu and Throw Button.", this);
             enabled = false;
             return;
         }
@@ -157,7 +153,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         bool active = CanContinueFlight;
         if (!active)
         {
-            if (wasActive && hasFocus && !paused) ResetRound();
+            if (wasActive) SuspendInteraction();
             wasActive = false;
             UpdateUI();
             return;
@@ -643,6 +639,18 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     private void PlaySound(AudioClip clip)
     { if (effectsSource != null && clip != null) effectsSource.PlayOneShot(clip); }
 
+    private void SuspendInteraction()
+    {
+        HidePickupHint();
+        CancelPickup();
+        CancelAim();
+        // Keep spent stones spent when returning to the menu: no repeat rewards.
+        if (held != null) held.ResetStone();
+        held = null;
+        pickupPointerId = int.MinValue;
+        SetBlock(false);
+    }
+
     public void ResetRound()
     {
         HidePickupHint();
@@ -663,7 +671,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     private void OnApplicationPause(bool pause) { paused = pause; if (pause) { CancelPickup(); CancelAim(); pickupPointerId = int.MinValue; SetBlock(false); } }
     private void OnDisable()
     {
-        ResetRound();
+        SuspendInteraction();
         wasActive = false;
         if (throwButton != null) throwButton.gameObject.SetActive(false);
         HidePickupHint();

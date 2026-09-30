@@ -13,7 +13,6 @@ public sealed class JourneyMenuController : MonoBehaviour
 {
     [Header("Panels")]
     [SerializeField] private GameObject mainMenuPanel;
-    [SerializeField] private GameObject levelsPanel;
     [SerializeField] private GameObject settingPanel;
 
     [Header("Main Menu Buttons")]
@@ -22,7 +21,6 @@ public sealed class JourneyMenuController : MonoBehaviour
     [SerializeField] private Button exitButton;
 
     [Header("Back Buttons")]
-    [SerializeField] private Button levelsBackButton;
     [SerializeField] private Button settingBackButton;
 
     [Header("Gameplay Back Button (optional)")]
@@ -33,13 +31,28 @@ public sealed class JourneyMenuController : MonoBehaviour
     [Header("Game Creator Player (optional: found automatically)")]
     [SerializeField] private global::GameCreator.Runtime.Characters.Character player;
 
-    public bool IsMenuOpen { get; private set; }
+    [Header("Single World - First Start Position")]
+    [SerializeField] private Transform startPoint;
+    public bool HasStartedGame { get; private set; }
+    public bool IsGameplayActive => HasStartedGame && !IsMenuOpen;
+
+    public enum GameLanguage { Persian = 0, English = 1, Arabic = 2 }
+    [Header("Language Buttons - translations will be added later")]
+    [SerializeField] private Button persianButton;
+    [SerializeField] private Button englishButton;
+    [SerializeField] private Button arabicButton;
+    [SerializeField] private UnityEvent<int> onLanguageChanged = new UnityEvent<int>();
+    private const string LanguageKey = "JourneyOfLight.Language";
+    public GameLanguage SelectedLanguage { get; private set; }
+
+    public bool IsMenuOpen { get; private set; } = true;
 
     private readonly global::System.Collections.Generic.Dictionary<GameObject, bool> savedObjectStates =
         new global::System.Collections.Generic.Dictionary<GameObject, bool>();
     private readonly global::System.Collections.Generic.Dictionary<Behaviour, bool> savedBehaviourStates =
         new global::System.Collections.Generic.Dictionary<Behaviour, bool>();
 
+    private bool capturedGameplayInput;
     private bool capturedPlayerControl;
     private bool previousPlayerControl;
     private bool started;
@@ -47,6 +60,11 @@ public sealed class JourneyMenuController : MonoBehaviour
 
     private void Awake()
     {
+        SelectedLanguage = (GameLanguage)Mathf.Clamp(PlayerPrefs.GetInt(LanguageKey, 0), 0, 2);
+        // Migration: the obsolete selector must not initialize after removing its UI.
+        foreach (JourneyLevelsController selector in FindObjectsByType<JourneyLevelsController>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (selector.gameObject.scene == gameObject.scene) selector.enabled = false;
         feedback = GetComponent<JourneyUIFeedback>();
         if (feedback == null) feedback = gameObject.AddComponent<JourneyUIFeedback>();
         if (!ValidateReferences()) enabled = false;
@@ -63,6 +81,7 @@ public sealed class JourneyMenuController : MonoBehaviour
     {
         started = true;
         ShowMainMenu();
+        onLanguageChanged?.Invoke((int)SelectedLanguage);
     }
 
     private void LateUpdate()
@@ -98,23 +117,53 @@ public sealed class JourneyMenuController : MonoBehaviour
         ShowPanel(mainMenuPanel);
     }
 
-    public void ShowLevels()
+    // Compatibility for old Inspector events; there is no level selection screen.
+    public void ShowLevels() => StartGame();
+
+    public void StartGame()
     {
-        ShowPanel(levelsPanel);
+        if (!isActiveAndEnabled || IsGameplayActive) return;
+        if (!HasStartedGame)
+        {
+            if (startPoint == null || player == null || player.Driver == null)
+            {
+                Debug.LogError("JourneyMenuController: assign Start Point and the Game Creator Player before starting.", this);
+                return;
+            }
+            player.Driver.SetPosition(startPoint.position);
+            player.Driver.SetRotation(startPoint.rotation);
+            HasStartedGame = true;
+        }
+        HideMenusForGameplay();
     }
+
+    public void SelectPersian() => SelectLanguage(GameLanguage.Persian);
+    public void SelectEnglish() => SelectLanguage(GameLanguage.English);
+    public void SelectArabic() => SelectLanguage(GameLanguage.Arabic);
+
+    private void SelectLanguage(GameLanguage language)
+    {
+        SelectedLanguage = language;
+        PlayerPrefs.SetInt(LanguageKey, (int)language);
+        PlayerPrefs.Save();
+        onLanguageChanged?.Invoke((int)language);
+    }
+
+    private void OnPersianClicked() => PlayClick(persianButton, JourneyUIFeedback.ButtonSound.Settings, SelectPersian);
+    private void OnEnglishClicked() => PlayClick(englishButton, JourneyUIFeedback.ButtonSound.Settings, SelectEnglish);
+    private void OnArabicClicked() => PlayClick(arabicButton, JourneyUIFeedback.ButtonSound.Settings, SelectArabic);
 
     public void ShowSettings()
     {
         ShowPanel(settingPanel);
     }
 
-    // The future level selector calls this AFTER checking the level's lock
-    // and preparing its island. This method does not load another scene.
+    // Preserve old Inspector calls while ensuring the initial spawn is applied.
     public void HideMenusForGameplay()
     {
+        if (!HasStartedGame) { StartGame(); return; }
         ClearSelection();
         mainMenuPanel.SetActive(false);
-        levelsPanel.SetActive(false);
         settingPanel.SetActive(false);
         currentPanel = null;
         feedback.StopMenuMusic();
@@ -139,12 +188,11 @@ public sealed class JourneyMenuController : MonoBehaviour
         currentPanel = target;
 
         mainMenuPanel.SetActive(target == mainMenuPanel);
-        levelsPanel.SetActive(target == levelsPanel);
         settingPanel.SetActive(target == settingPanel);
         target.transform.SetAsLastSibling();
-        feedback.ShowMenuMusic(target == levelsPanel);
+        feedback.ShowMenuMusic(false);
 
-        if (!IsMenuOpen)
+        if (!IsMenuOpen || !capturedGameplayInput)
         {
             IsMenuOpen = true;
             CaptureGameplayInput();
@@ -156,6 +204,7 @@ public sealed class JourneyMenuController : MonoBehaviour
 
     private void CaptureGameplayInput()
     {
+        capturedGameplayInput = true;
         if (player == null)
         {
             global::GameCreator.Runtime.Characters.Character[] characters =
@@ -220,7 +269,6 @@ public sealed class JourneyMenuController : MonoBehaviour
         // Never hide the manager, its parents, or an ancestor of a menu panel.
         if (transform.IsChildOf(target.transform) ||
             mainMenuPanel.transform.IsChildOf(target.transform) ||
-            levelsPanel.transform.IsChildOf(target.transform) ||
             settingPanel.transform.IsChildOf(target.transform)) return;
 
         if (!savedObjectStates.ContainsKey(target))
@@ -232,6 +280,7 @@ public sealed class JourneyMenuController : MonoBehaviour
     private void RestoreGameplayInput()
     {
         IsMenuOpen = false;
+        capturedGameplayInput = false;
 
         foreach (global::System.Collections.Generic.KeyValuePair<GameObject, bool> item in savedObjectStates)
         {
@@ -266,14 +315,16 @@ public sealed class JourneyMenuController : MonoBehaviour
         Bind(startButton, OnStartClicked, add);
         Bind(settingButton, OnSettingsClicked, add);
         Bind(exitButton, OnExitClicked, add);
-        Bind(levelsBackButton, OnLevelsBackClicked, add);
+        Bind(persianButton, OnPersianClicked, add);
+        Bind(englishButton, OnEnglishClicked, add);
+        Bind(arabicButton, OnArabicClicked, add);
         Bind(settingBackButton, OnSettingsBackClicked, add);
         Bind(gameplayBackButton, OnGameplayBackClicked, add);
     }
 
     private void OnStartClicked()
     {
-        PlayClick(startButton, JourneyUIFeedback.ButtonSound.Start, ShowLevels);
+        PlayClick(startButton, JourneyUIFeedback.ButtonSound.Start, StartGame);
     }
 
     private void OnSettingsClicked()
@@ -284,11 +335,6 @@ public sealed class JourneyMenuController : MonoBehaviour
     private void OnExitClicked()
     {
         PlayClick(exitButton, JourneyUIFeedback.ButtonSound.Exit, QuitGame);
-    }
-
-    private void OnLevelsBackClicked()
-    {
-        PlayClick(levelsBackButton, JourneyUIFeedback.ButtonSound.Back, ShowMainMenu);
     }
 
     private void OnSettingsBackClicked()
@@ -318,24 +364,18 @@ public sealed class JourneyMenuController : MonoBehaviour
 
     private bool ValidateReferences()
     {
-        if (mainMenuPanel == null || levelsPanel == null || settingPanel == null ||
-            startButton == null || settingButton == null || exitButton == null ||
-            levelsBackButton == null || settingBackButton == null)
+        if (mainMenuPanel == null || settingPanel == null || startButton == null ||
+            settingButton == null || exitButton == null || settingBackButton == null)
         {
-            Debug.LogError("JourneyMenuController: assign all three Panels and all five Buttons in the Inspector before Play.", this);
+            Debug.LogError("JourneyMenuController: assign Main Menu, Setting Panel, Start, Settings, Exit and Settings Back.", this);
             return false;
         }
-
-        if (mainMenuPanel == levelsPanel || mainMenuPanel == settingPanel ||
-            levelsPanel == settingPanel ||
-            transform.IsChildOf(mainMenuPanel.transform) ||
-            transform.IsChildOf(levelsPanel.transform) ||
+        if (mainMenuPanel == settingPanel || transform.IsChildOf(mainMenuPanel.transform) ||
             transform.IsChildOf(settingPanel.transform))
         {
-            Debug.LogError("JourneyMenuController: use three different panels and put MenuManager outside them, for example under --Logic.", this);
+            Debug.LogError("JourneyMenuController: use separate panels and keep MenuManager outside them.", this);
             return false;
         }
-
         return true;
     }
 
