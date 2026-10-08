@@ -89,6 +89,13 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     private static readonly HashSet<JourneyStoneThrowController> blockers = new HashSet<JourneyStoneThrowController>();
     public static bool IsMovementBlocked => blockers.Count != 0;
     public JourneyStoneTower Target => target;
+    // Includes the end of the throw animation, after the stone has left the hand.
+    public bool IsUsingStone => pickingUp || held != null || releasing || draggingThrow ||
+        (animator != null && animator.runtimeAnimatorController != null &&
+         animator.GetLayerIndex(pickupLayerName) >= 0 &&
+         animator.GetLayerWeight(animator.GetLayerIndex(pickupLayerName)) > 0.01f);
+    public void CancelForRespawn() { SuspendInteraction(); }
+
     public bool CanContinueFlight => initialized && hasFocus && !paused && isActiveAndEnabled && menu != null && menu.IsGameplayActive;
     private JourneyThrowableStone held;
     private JourneyThrowableStone pickupCandidate;

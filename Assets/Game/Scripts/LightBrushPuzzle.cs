@@ -136,7 +136,7 @@ public class LightBrushPuzzle : MonoBehaviour
     private bool inputFocused = true;
     private bool inputPaused;
 
-    public static bool IsMovementBlocked => movementBlockers.Count > 0 || JourneyVoiceBoard.IsPointerCaptured || JourneyStoneThrowController.IsMovementBlocked;
+    public static bool IsMovementBlocked => movementBlockers.Count > 0 || JourneyVoiceBoard.IsPointerCaptured || JourneyStoneThrowController.IsMovementBlocked || JourneyPlayerCombat.IsMovementBlocked;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetMovementBlockers()
@@ -275,7 +275,7 @@ public class LightBrushPuzzle : MonoBehaviour
     {
         UpdateMovementBlock();
         AnimateLinePulse();
-        if (JourneyVoiceBoard.IsPointerCaptured || JourneyStoneThrowController.IsMovementBlocked)
+        if (JourneyVoiceBoard.IsPointerCaptured || JourneyStoneThrowController.IsMovementBlocked || JourneyPlayerCombat.IsMovementBlocked)
         {
             if (drawing) ResetBrush();
             return;
