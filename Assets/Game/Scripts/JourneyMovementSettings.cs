@@ -20,6 +20,27 @@ public sealed class JourneyMovementSettings : MonoBehaviour
     [SerializeField, Min(1f)] private float dragRadius = 120f;
     [SerializeField, Range(0f, 0.9f)] private float deadZone = 0.12f;
 
+    [Header("Shared left joystick appearance (walking and driving)")]
+    [SerializeField] private Sprite joystickBackgroundSprite;
+    [SerializeField] private Sprite joystickHandleSprite;
+    private GameObject skinRoot;
+    private Image backgroundImage, handleImage;
+    private Sprite defaultBackground, defaultHandle;
+    private static bool drivingMode;
+    public static bool HasSharedJoystick => movementInput != null && movementInput.JoystickRoot != null;
+    public static float ReadDrivingSteering()
+    {
+        if (!drivingMode || movementInput == null) return 0f;
+        Vector2 value = movementInput.ReadJoystickOnly();
+        return Finite(value) ? Mathf.Clamp(value.x, -1f, 1f) : 0f;
+    }
+    public static void SetDrivingMode(bool value)
+    {
+        drivingMode = value;
+        if (movementInput != null) movementInput.ResetJoystick();
+        if (instance != null) { instance.ResetDrag(); instance.RefreshControls(); }
+    }
+
     private const string PreferenceKey = "JourneyOfLight.Controls.LeftDrag";
     private const int NoPointer = int.MinValue;
 
@@ -46,6 +67,7 @@ public sealed class JourneyMovementSettings : MonoBehaviour
         // Also reset when Enter Play Mode has domain reload disabled.
         instance = null;
         movementInput = null;
+        drivingMode = false;
     }
 
     private void Awake()
@@ -187,8 +209,10 @@ public sealed class JourneyMovementSettings : MonoBehaviour
     {
         if (!initialized || instance != this) return;
 
-        bool gameplay = isActiveAndEnabled && GameplayAllowsInput();
-        bool showDrag = gameplay && useLeftDrag && movementInput != null;
+        bool gameplay = isActiveAndEnabled && (drivingMode
+            ? initialized && hasFocus && !isPaused && !isQuitting && Time.timeScale > 0f && menu != null && menu.IsGameplayActive
+            : GameplayAllowsInput());
+        bool showDrag = gameplay && !drivingMode && useLeftDrag && movementInput != null;
 
         if (dragArea != null && dragArea.gameObject.activeSelf != showDrag)
             dragArea.gameObject.SetActive(showDrag);
@@ -199,9 +223,27 @@ public sealed class JourneyMovementSettings : MonoBehaviour
         // Own only the joystick created by the new Input Move provider.
         // Do not change the right drag area or shared Input System actions.
         GameObject joystick = movementInput != null ? movementInput.JoystickRoot : null;
-        bool showJoystick = gameplay && !useLeftDrag;
+        bool showJoystick = gameplay && (drivingMode || !useLeftDrag);
+        ApplyJoystickSkin(joystick);
         if (joystick != null && joystick.activeSelf != showJoystick)
             joystick.SetActive(showJoystick);
+    }
+
+    private void ApplyJoystickSkin(GameObject joystick)
+    {
+        if (joystick == null) return;
+        if (skinRoot != joystick)
+        {
+            skinRoot = joystick;
+            Transform surface = joystick.transform.Find("Surface");
+            backgroundImage = surface != null ? surface.GetComponent<Image>() : null;
+            Transform handle = surface != null ? surface.Find("Stick") : null;
+            handleImage = handle != null ? handle.GetComponent<Image>() : null;
+            defaultBackground = backgroundImage != null ? backgroundImage.overrideSprite : null;
+            defaultHandle = handleImage != null ? handleImage.overrideSprite : null;
+        }
+        if (backgroundImage != null) backgroundImage.overrideSprite = joystickBackgroundSprite != null ? joystickBackgroundSprite : defaultBackground;
+        if (handleImage != null) handleImage.overrideSprite = joystickHandleSprite != null ? joystickHandleSprite : defaultHandle;
     }
 
     private void BeginDrag(PointerEventData data)
@@ -281,7 +323,7 @@ public sealed class JourneyMovementSettings : MonoBehaviour
     internal static bool TryReadMovement(out Vector2 value)
     {
         value = Vector2.zero;
-        if (LightBrushPuzzle.IsMovementBlocked) return true;
+        if (drivingMode || LightBrushPuzzle.IsMovementBlocked) return true;
         if (instance == null || !instance.isActiveAndEnabled) return false;
 
         if (!instance.GameplayAllowsInput())
@@ -370,6 +412,8 @@ public sealed class JourneyMovementSettings : MonoBehaviour
 public sealed class InputValueVector2MobileLeftStickOrDrag : TInputValueVector2MobileStick
 {
     internal GameObject JoystickRoot => Stick != null ? Stick.Root : null;
+    internal Vector2 ReadJoystickOnly() => base.Read();
+    internal void ResetJoystick() { if (Stick != null) Stick.OnPointerUp(null); }
 
     protected override ITouchStick CreateTouchStick()
     {
