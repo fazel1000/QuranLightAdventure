@@ -17,6 +17,35 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     public Transform startPoint;
     public JourneyStoneThrowController stoneController;
     public Button attackButton;
+    public const string DefenseState = "Journey Sword Actions.ShieldBlock";
+    [Header("Shield defense")]
+    public Button defendButton;
+    public BoxCollider shieldHitbox;
+    [Tooltip("The Player's body collider / CharacterController, not the shield.")]
+    public Collider bodyHitbox;
+    [Min(0.1f)] public float defenseSpeed = 0.65f;
+    [Range(0f, 1f)] public float defenseStart = 0.15f;
+    [Range(0f, 1f)] public float defenseEnd = 0.85f;
+    [Min(0f)] public float defenseCooldown = 0.15f;
+    public AudioClip shieldBlockSound;
+    public UnityEvent onShieldBlock = new UnityEvent();
+    public bool IsDefending { get; private set; }
+    private bool defenseReady, observedDefense;
+    private float defenseStarted, nextDefenseAt;
+    private int defenseRequestFrame;
+    public bool ShieldActive
+    {
+        get
+        {
+            if (!IsDefending || !GameplayActive || playerAnimator == null ||
+                playerAnimator.runtimeAnimatorController != expectedController ||
+                !playerAnimator.isActiveAndEnabled || Time.frameCount <= defenseRequestFrame ||
+                shieldHitbox == null || !shieldHitbox.enabled || !shieldHitbox.gameObject.activeInHierarchy) return false;
+            var state = playerAnimator.GetCurrentAnimatorStateInfo(layer);
+            return state.IsName(DefenseState) && state.normalizedTime >= defenseStart &&
+                state.normalizedTime <= Mathf.Max(defenseStart, defenseEnd);
+        }
+    }
     [Header("Health UI")]
     public Image healthFill;
     public RTLTextMeshPro healthPercentText;
@@ -47,7 +76,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     public Vector3 BodyPoint => player.transform.position;
     public Vector3 HitPoint => player.transform.position + Vector3.up * hitHeight;
     public Transform PlayerTransform => player.transform;
-    public static bool IsMovementBlocked => activeAttacker != null && activeAttacker.IsAttacking;
+    public static bool IsMovementBlocked => activeAttacker != null && (activeAttacker.IsAttacking || activeAttacker.IsDefending);
     private static JourneyPlayerCombat activeAttacker;
     private readonly HashSet<JourneySkeletonEnemy> hitThisSwing = new HashSet<JourneySkeletonEnemy>();
     private readonly RaycastHit[] sightHits = new RaycastHit[64];
@@ -60,7 +89,11 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics() { activeAttacker = null; }
 
-    private void OnEnable() { if (attackButton != null) attackButton.onClick.AddListener(TryAttack); }
+    private void OnEnable()
+    {
+        if (attackButton != null) attackButton.onClick.AddListener(TryAttack);
+        if (defendButton != null) defendButton.onClick.AddListener(TryDefend);
+    }
     private void Start()
     {
         if (player == null) player = GetComponent<Character>();
@@ -71,6 +104,12 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
         if (layer < 0 || !playerAnimator.HasState(layer, Animator.StringToHash(AttackState)))
         { Fail("Run Quran Kids > Setup Journey Combat using the player's current Animator."); return; }
         expectedController = playerAnimator.runtimeAnimatorController;
+        playerAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        if (bodyHitbox == null) bodyHitbox = player.GetComponent<Collider>();
+        defenseReady = defendButton != null && shieldHitbox != null && bodyHitbox != null &&
+            playerAnimator.HasState(layer, Animator.StringToHash(DefenseState));
+        if (defendButton != null && !defenseReady)
+            Debug.LogWarning("Shield: assign body/shield colliders and run Setup Journey Shield.", this);
         CurrentHealth = Mathf.Max(1, maximumHealth);
         ready = true;
         RefreshHealth();
@@ -80,6 +119,8 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     {
         if (!ready) return;
         if (attackButton != null) attackButton.interactable = CanAttack();
+        if (defendButton != null) defendButton.interactable = CanDefend();
+        UpdateDefense();
         if (!IsAttacking) return;
         if (!GameplayActive || playerAnimator == null || !playerAnimator.isActiveAndEnabled ||
             playerAnimator.runtimeAnimatorController != expectedController)
@@ -104,7 +145,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
 
     private bool CanAttack()
     {
-        return GameplayActive && !IsAttacking && Time.time >= nextAttackAt &&
+        return GameplayActive && !IsAttacking && !IsDefending && Time.time >= nextAttackAt &&
             !LightBrushPuzzle.IsMovementBlocked && !JourneyVoiceBoard.IsPointerCaptured &&
             (stoneController == null || !stoneController.IsUsingStone) &&
             playerAnimator != null && playerAnimator.isActiveAndEnabled &&
@@ -129,6 +170,66 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
         playerAnimator.SetLayerWeight(layer, 0f);
         playerAnimator.Play(AttackState, layer, 0f);
         if (effectsSource != null && swingSound != null) effectsSource.PlayOneShot(swingSound);
+    }
+
+    private bool CanDefend()
+    {
+        return defenseReady && GameplayActive && !IsAttacking && !IsDefending && Time.time >= nextDefenseAt &&
+            !LightBrushPuzzle.IsMovementBlocked && !JourneyVoiceBoard.IsPointerCaptured &&
+            (stoneController == null || !stoneController.IsUsingStone) && playerAnimator != null &&
+            playerAnimator.isActiveAndEnabled && playerAnimator.speed > 0f &&
+            playerAnimator.runtimeAnimatorController == expectedController;
+    }
+
+    public void TryDefend()
+    {
+        if (!CanDefend()) return;
+        IsDefending = true;
+        activeAttacker = this;
+        observedDefense = false;
+        defenseStarted = Time.time;
+        defenseRequestFrame = Time.frameCount;
+        RightScreenDragArea.ClearInput();
+        JourneyMovementSettings.RefreshPuzzleInput();
+        playerAnimator.SetFloat("JourneyShieldSpeed", Mathf.Max(0.1f, defenseSpeed));
+        playerAnimator.SetLayerWeight(layer, 0f);
+        playerAnimator.Play(DefenseState, layer, 0f);
+    }
+
+    private void UpdateDefense()
+    {
+        if (!IsDefending) return;
+        if (!GameplayActive || playerAnimator == null || !playerAnimator.isActiveAndEnabled ||
+            playerAnimator.runtimeAnimatorController != expectedController)
+        { EndDefense(); return; }
+        if (Time.frameCount <= defenseRequestFrame) return;
+        var state = playerAnimator.GetCurrentAnimatorStateInfo(layer);
+        if (state.IsName(DefenseState))
+        {
+            observedDefense = true;
+            float t = state.normalizedTime;
+            playerAnimator.SetLayerWeight(layer, Mathf.Min(Mathf.Clamp01(t / 0.06f), Mathf.Clamp01((1f - t) / 0.08f)));
+            if (t >= 1f) EndDefense();
+        }
+        else if (observedDefense || Time.time - defenseStarted > 0.75f) EndDefense();
+        if (IsDefending && Time.time - defenseStarted > 15f) EndDefense();
+    }
+
+    private void EndDefense()
+    {
+        if (!IsDefending) return;
+        if (playerAnimator != null && playerAnimator.runtimeAnimatorController == expectedController && layer >= 0)
+            playerAnimator.SetLayerWeight(layer, 0f);
+        IsDefending = false;
+        if (activeAttacker == this) activeAttacker = null;
+        nextDefenseAt = Time.time + Mathf.Max(0f, defenseCooldown);
+        JourneyMovementSettings.RefreshPuzzleInput();
+    }
+
+    public void NotifyShieldBlock()
+    {
+        if (effectsSource != null && shieldBlockSound != null) effectsSource.PlayOneShot(shieldBlockSound);
+        onShieldBlock?.Invoke();
     }
 
     private void ApplySwordHits()
@@ -178,6 +279,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
 
     private void Respawn()
     {
+        EndDefense();
         EndAttack();
         if (stoneController != null) stoneController.CancelForRespawn();
         foreach (JourneySkeletonEnemy enemy in JourneySkeletonEnemy.ActiveEnemies)
@@ -214,8 +316,10 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     private void OnDisable()
     {
         if (attackButton != null) { attackButton.onClick.RemoveListener(TryAttack); attackButton.interactable = false; }
+        if (defendButton != null) { defendButton.onClick.RemoveListener(TryDefend); defendButton.interactable = false; }
+        EndDefense();
         EndAttack();
     }
-    private void OnApplicationFocus(bool value) { focused = value; if (!value) EndAttack(); }
-    private void OnApplicationPause(bool value) { paused = value; if (value) EndAttack(); }
+    private void OnApplicationFocus(bool value) { focused = value; if (!value) { EndDefense(); EndAttack(); } }
+    private void OnApplicationPause(bool value) { paused = value; if (value) { EndDefense(); EndAttack(); } }
 }

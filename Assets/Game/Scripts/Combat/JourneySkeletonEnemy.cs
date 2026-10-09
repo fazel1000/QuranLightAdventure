@@ -23,6 +23,21 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     [Min(0.1f)] public float attackRange = 1.6f;
     [Min(0f)] public float attackCooldown = 1.2f;
     [Range(0.05f, 0.95f)] public float attackHitTime = 0.45f;
+    [Header("Weapon contacts - both points must follow the animated blade")]
+    public Transform bladeBase;
+    public Transform bladeTip;
+    [Min(0.01f)] public float bladeRadius = 0.06f;
+    [Range(0f, 1f)] public float attackHitEnd = 0.8f;
+    [Tooltip("Track the FIRST contact throughout the swing, including before Attack Hit Time.")]
+    public bool checkWholeSwing = true;
+    [Tooltip("Logs body/shield/miss and health changes once per attack. Disable after testing.")]
+    public bool debugContacts;
+    private bool warnedBodyHitbox;
+    private readonly JourneyBladeContacts bladeContacts = new JourneyBladeContacts();
+    private bool bladeHistory;
+    private Vector3 previousBladeBase, previousBladeTip;
+    private float previousSwingTime;
+    private int swingRequestFrame;
     [Min(0.1f)] public float hitHeight = 0.9f;
     [Min(0.1f)] public float turnSpeed = 360f;
     // Kept only for compatibility with existing Setup scripts and serialized scenes.
@@ -66,6 +81,16 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
         foreach (string state in new[] { "Idle", "Run", "Attack", "Death" })
             if (!modelAnimator.HasState(0, Animator.StringToHash("Base Layer." + state)))
             { Fail("Run Setup Journey Combat to create the Skeleton controller."); return; }
+        if ((bladeBase == null) != (bladeTip == null))
+        { Fail("Assign BOTH Blade Base and Blade Tip."); return; }
+        if (bladeBase == null)
+            Debug.LogWarning("Enemy has no blade markers: using legacy timed damage; shield cannot block this enemy until markers are assigned.", this);
+        if (bladeBase != null)
+        {
+            if (!bladeBase.IsChildOf(transform) || !bladeTip.IsChildOf(transform))
+            { Fail("Blade markers must belong to this enemy's animated weapon."); return; }
+            modelAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        }
         path = new NavMeshPath();
         home = lastSafe = transform.position;
         agent.autoBraking = true;
@@ -84,7 +109,7 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
         if (!ready) return;
         bool gameplay = playerCombat != null && playerCombat.GameplayActive;
         PauseAnimation(!gameplay);
-        if (!gameplay) { StopAgent(false); return; }
+        if (!gameplay) { bladeHistory = false; StopAgent(false); return; }
         // The non-looping Death state holds its final pose. Keep the model active.
         // Navigation, combat and colliders were already disabled on death.
         if (IsDead) return;
@@ -162,6 +187,9 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
                 attacking = true;
                 attackHitDone = attackObserved = false;
                 attackStarted = Time.time;
+                previousSwingTime = 0f;
+                bladeHistory = false;
+                swingRequestFrame = Time.frameCount;
                 PlayAnimation("Attack", true);
             }
             return;
@@ -173,19 +201,86 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     {
         StopAgent(true);
         FacePlayer();
-        AnimatorStateInfo state = modelAnimator.GetCurrentAnimatorStateInfo(0);
+    }
+
+    // Query after animation evaluation, using the visible blade pose.
+    private void LateUpdate()
+    {
+        if (!ready || IsDead || !attacking || playerCombat == null || !playerCombat.GameplayActive) return;
+        if (Time.frameCount <= swingRequestFrame) return;
+        var state = modelAnimator.GetCurrentAnimatorStateInfo(0);
         if (state.IsName("Base Layer.Attack"))
         {
             attackObserved = true;
-            if (!attackHitDone && state.normalizedTime >= attackHitTime)
+            float t = state.normalizedTime;
+            bool physical = bladeBase != null && bladeTip != null;
+            float windowStart = physical && checkWholeSwing ? 0f : attackHitTime;
+            float windowEnd = physical && checkWholeSwing ? 1f : Mathf.Max(attackHitTime, attackHitEnd);
+            bool crossedWindow = t >= windowStart && previousSwingTime <= windowEnd;
+            if (physical && !warnedBodyHitbox && (playerCombat.bodyHitbox == null ||
+                !playerCombat.bodyHitbox.enabled || !playerCombat.bodyHitbox.gameObject.activeInHierarchy))
             {
-                attackHitDone = true;
-                if (Vector3.Distance(HitPoint, playerCombat.HitPoint) <= attackRange &&
-                    OutsideDistance(playerCombat.BodyPoint) <= chaseExtraDistance &&
-                    playerCombat.HasClearLine(HitPoint, playerCombat.HitPoint, transform))
-                    playerCombat.TakeDamage(attackDamage);
+                warnedBodyHitbox = true;
+                Debug.LogWarning("Combat: Player Body Hitbox is missing or disabled. Assign the enabled CombatBodyHitbox capsule in JourneyPlayerCombat.", playerCombat);
             }
-            if (state.normalizedTime >= 1f) FinishAttack();
+            bool inRange = OutsideDistance(playerCombat.BodyPoint) <= chaseExtraDistance &&
+                Vector3.Distance(HitPoint, playerCombat.HitPoint) <= attackRange + (physical ? 1f : 0f) &&
+                playerCombat.HasClearLine(HitPoint, playerCombat.HitPoint, transform);
+            if (!attackHitDone && crossedWindow && inRange)
+            {
+                if (physical)
+                {
+                    // Clip the swept interval to the active damage window.
+                    Vector3 a = bladeBase.position, b = bladeTip.position;
+                    Vector3 fromA = bladeHistory ? previousBladeBase : a;
+                    Vector3 fromB = bladeHistory ? previousBladeTip : b;
+                    float dt = t - previousSwingTime;
+                    if (bladeHistory && dt > 0.00001f)
+                    {
+                        float begin = Mathf.Clamp01((windowStart - previousSwingTime) / dt);
+                        float finish = Mathf.Clamp01((windowEnd - previousSwingTime) / dt);
+                        a = Vector3.Lerp(previousBladeBase, bladeBase.position, finish);
+                        b = Vector3.Lerp(previousBladeTip, bladeTip.position, finish);
+                        fromA = Vector3.Lerp(previousBladeBase, bladeBase.position, begin);
+                        fromB = Vector3.Lerp(previousBladeTip, bladeTip.position, begin);
+                    }
+                    int contact = bladeContacts.Check(fromA, fromB, a, b, bladeRadius, playerCombat);
+                    if (contact != 0)
+                    {
+                        attackHitDone = true;
+                        if (contact == 1)
+                        {
+                            if (debugContacts) Debug.Log(name + ": FIRST CONTACT = SHIELD; this swing is blocked.", this);
+                            playerCombat.NotifyShieldBlock();
+                        }
+                        else if (contact == 2)
+                        {
+                            int before = playerCombat.CurrentHealth;
+                            playerCombat.TakeDamage(attackDamage);
+                            if (debugContacts) Debug.Log(name + ": FIRST CONTACT = BODY; HP " + before + " -> " +
+                                playerCombat.CurrentHealth + ". Unchanged HP may mean hit/respawn invulnerability; full HP may mean respawn.", this);
+                        }
+                    }
+                }
+                else
+                {
+                    attackHitDone = true;
+                    playerCombat.TakeDamage(attackDamage);
+                }
+            }
+            if (physical)
+            {
+                previousBladeBase = bladeBase.position;
+                previousBladeTip = bladeTip.position;
+                bladeHistory = true;
+            }
+            previousSwingTime = t;
+            if (t >= 1f)
+            {
+                if (debugContacts && !attackHitDone && physical)
+                    Debug.Log(name + ": NO VALID CONTACT. Check body capsule, blade markers, range, and wall mask.", this);
+                FinishAttack();
+            }
         }
         else if (attackObserved || Time.time - attackStarted > 0.75f) FinishAttack();
         if (attacking && Time.time - attackStarted > 10f) FinishAttack();
@@ -290,6 +385,13 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     private void OnDisable() { enemies.Remove(this); StopAgent(true); PauseAnimation(false); }
     private void OnDrawGizmosSelected()
     {
+        if (bladeBase != null && bladeTip != null)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawLine(bladeBase.position, bladeTip.position);
+            Gizmos.DrawWireSphere(bladeBase.position, bladeRadius);
+            Gizmos.DrawWireSphere(bladeTip.position, bladeRadius);
+        }
         if (patrolArea == null) return;
         Matrix4x4 previous = Gizmos.matrix;
         Gizmos.matrix = patrolArea.transform.localToWorldMatrix;
