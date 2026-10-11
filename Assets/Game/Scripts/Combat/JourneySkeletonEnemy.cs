@@ -107,7 +107,7 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     private void Update()
     {
         if (!ready) return;
-        bool gameplay = playerCombat != null && playerCombat.GameplayActive;
+        bool gameplay = playerCombat != null && playerCombat.WorldGameplayActive;
         PauseAnimation(!gameplay);
         if (!gameplay) { bladeHistory = false; StopAgent(false); return; }
         // The non-looping Death state holds its final pose. Keep the model active.
@@ -127,6 +127,7 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
         // Test exit every frame, so an attack cannot land after the player leaves the leash.
         if (mode == Mode.Chase && OutsideDistance(playerCombat.BodyPoint) > chaseExtraDistance)
             ReturnHome();
+        if (attacking && !playerCombat.GameplayActive) FinishAttack();
         if (attacking) { UpdateAttack(); return; }
         if (Time.time >= nextThink)
         {
@@ -177,7 +178,7 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     private void Chase()
     {
         agent.speed = chaseSpeed;
-        if (Vector3.Distance(HitPoint, playerCombat.HitPoint) <= attackRange &&
+        if (playerCombat.GameplayActive && Vector3.Distance(HitPoint, playerCombat.HitPoint) <= attackRange &&
             playerCombat.HasClearLine(HitPoint, playerCombat.HitPoint, transform))
         {
             StopAgent(true);

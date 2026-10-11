@@ -60,7 +60,8 @@ public sealed class JourneyVehicleDriver : MonoBehaviour
         if (!Gameplay) { ResetInput(); return; }
         if (exitButton != null) exitButton.interactable = current.SpeedKph <= exitMaximumSpeed;
         current.SetInput(JourneyMovementSettings.ReadDrivingSteering(), gas != null && gas.Held ? 1f : 0f,
-            brake != null && brake.Held ? 1f : 0f, nitro != null && nitro.Held);
+            brake != null && brake.Held ? 1f : 0f, false);
+        if (nitro != null && nitro.ConsumePress()) current.RequestNitro();
     }
     public void Enter()
     {

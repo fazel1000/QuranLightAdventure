@@ -71,6 +71,9 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
 
     public int CurrentHealth { get; private set; }
     public bool IsAttacking { get; private set; }
+    // World simulation must not depend on the on-foot combat component being enabled.
+    public bool WorldGameplayActive => ready && focused && !paused &&
+        menu != null && menu.IsGameplayActive && Time.timeScale > 0f;
     public bool GameplayActive => ready && isActiveAndEnabled && focused && !paused &&
         menu != null && menu.IsGameplayActive && Time.timeScale > 0f;
     public Vector3 BodyPoint => player.transform.position;
