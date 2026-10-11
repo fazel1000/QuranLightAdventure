@@ -26980,12 +26980,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 515121164}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.171, y: 0.936, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: 0.09558515, y: 0.9954213, z: -0, w: 0}
+  m_LocalPosition: {x: -0.8597366, y: -0.23071241, z: -0.51503056}
+  m_LocalScale: {x: 1.6599996, y: 1.66, z: 1.6599996}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 543450652120761177}
+  m_Father: {fileID: 1838689595}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!82 &515121166
 AudioSource:
@@ -90164,7 +90164,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1838689595}
-  - component: {fileID: 1838689596}
   m_Layer: 0
   m_Name: Drone Root
   m_TagString: Untagged
@@ -90186,29 +90185,9 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2103383758}
+  - {fileID: 515121165}
   m_Father: {fileID: 543450652120761177}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 10.97}
---- !u!65 &1838689596
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1838689594}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 4.033084, y: 0.3366189, z: 4.1914997}
-  m_Center: {x: 0.725997, y: -0.095437154, z: -0.51871824}
 --- !u!1001 &1839791972
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -102958,6 +102937,7 @@ Transform:
   - {fileID: 1026259143769745045}
   - {fileID: 5661428787866725117}
   - {fileID: 1271689216812776336}
+  - {fileID: 7267905708876206117}
   m_Father: {fileID: 1838689595}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2105847705
@@ -105246,10 +105226,8 @@ Transform:
   m_Children:
   - {fileID: 1838689595}
   - {fileID: 546086651}
-  - {fileID: 7267905708876206117}
   - {fileID: 1781764852}
   - {fileID: 410729608}
-  - {fileID: 515121165}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
 --- !u!4 &543450652340874708
@@ -107747,6 +107725,7 @@ GameObject:
   - component: {fileID: 3597374161006892838}
   - component: {fileID: 1328291896869528888}
   - component: {fileID: 556426970695877812}
+  - component: {fileID: 4563465874711381295}
   m_Layer: 0
   m_Name: aerofoil
   m_TagString: Untagged
@@ -107754,6 +107733,28 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!64 &4563465874711381295
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4563465874711381294}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 5120999804348074672, guid: a42f124bde87ceb4da62b5b965dba645, type: 3}
 --- !u!1 &4593471761336103509
 GameObject:
   m_ObjectHideFlags: 0
@@ -108428,12 +108429,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4292625690697653099}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.54691625, y: 0.6861884, z: 0.29893285, w: 0.3750563}
-  m_LocalPosition: {x: 1.6268306, y: 0.8348218, z: 0}
-  m_LocalScale: {x: 100, y: 100, z: 99.999985}
+  m_LocalRotation: {x: -0.54691625, y: 0.6861884, z: 0.29893285, w: 0.37505627}
+  m_LocalPosition: {x: 1.6268314, y: 0.83482176, z: 0}
+  m_LocalScale: {x: 100, y: 100, z: 99.99998}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 543450652120761177}
+  m_Father: {fileID: 2103383758}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &7338208866140952488
 Transform:
