@@ -28,6 +28,12 @@ public sealed class JourneyMovementSettings : MonoBehaviour
     private Sprite defaultBackground, defaultHandle;
     private static bool drivingMode;
     public static bool HasSharedJoystick => movementInput != null && movementInput.JoystickRoot != null;
+    public static Vector2 ReadFlightSteering()
+    {
+        if (!drivingMode || movementInput == null) return Vector2.zero;
+        Vector2 value = movementInput.ReadJoystickOnly();
+        return Finite(value) ? Vector2.ClampMagnitude(value, 1f) : Vector2.zero;
+    }
     public static float ReadDrivingSteering()
     {
         if (!drivingMode || movementInput == null) return 0f;
