@@ -16,6 +16,13 @@ public sealed class JourneyDroneLauncher : MonoBehaviour
     public GameObject engineSmokePrefab;
     public AudioSource audioSource;
     public AudioClip boosterSound, engineLoop, impactSound;
+    [Header("Impact audio - separate source")]
+    public AudioSource impactAudioSource;
+    public bool impactAudio2D = true;
+    [Header("Visual propeller")]
+    public Transform propeller;
+    [Tooltip("Visual rotation around the propeller's local Y, in degrees per second. Negative reverses it.")]
+    public float propellerDegreesPerSecond = 1800f;
     public GameObject impactExplosionPrefab, targetSmokePrefab;
     [Header("Arcade timing and movement")]
     [Min(0.05f)] public float railDuration = 0.45f;
@@ -49,6 +56,9 @@ public sealed class JourneyDroneLauncher : MonoBehaviour
     private void OnEnable() { Available.Add(this); }
     private void Awake()
     {
+        if (propeller == null && droneRoot != null)
+            foreach (Transform child in droneRoot.GetComponentsInChildren<Transform>(true))
+                if (child.name == "Drone propeller") { propeller = child; break; }
         if (boosterFlame != null) boosterFlame.SetActive(false);
         if (engineSmoke != null) engineSmoke.SetActive(false);
         if (audioSource != null) { audioSource.playOnAwake = false; audioSource.Stop(); }
@@ -210,19 +220,40 @@ public sealed class JourneyDroneLauncher : MonoBehaviour
                 explosion.SetActive(true); PlayParticles(explosion); Destroy(explosion, explosionLifetime);
             }
         }
-        if (audioSource != null)
-        {
-            audioSource.Stop();
-            if (impact && impactSound != null)
-            {
-                // Preserve the SAME AudioSource while destroying the drone visuals.
-                audioSource.transform.SetParent(null, true); audioSource.transform.position = point;
-                audioSource.loop = false; audioSource.clip = impactSound; audioSource.Play();
-                Destroy(audioSource.gameObject, impactSound.length + 0.2f);
-            }
-        }
+        if (audioSource != null) audioSource.Stop();
+        if (impact && impactSound != null) PlayImpactAudio(point);
         if (!separated && boosterRoot != null) Destroy(boosterRoot.gameObject);
         if (droneRoot != null) Destroy(droneRoot.gameObject);
+    }
+    private void PlayImpactAudio(Vector3 point)
+    {
+        var source = impactAudioSource;
+        // An engine source must never be reused for this separate, audible impact channel.
+        bool temporary = source == null || source == audioSource ||
+            source.transform == droneRoot || source.transform == boosterRoot;
+        if (temporary)
+        {
+            var go = new GameObject("Drone Impact Audio");
+            go.transform.position = point;
+            source = go.AddComponent<AudioSource>();
+            source.volume = 1f;
+        }
+        else if ((droneRoot != null && source.transform.IsChildOf(droneRoot)) ||
+            (!separated && boosterRoot != null && source.transform.IsChildOf(boosterRoot)))
+        {
+            source.transform.SetParent(null, true);
+            temporary = true;
+        }
+        source.playOnAwake = false; source.loop = false;
+        if (impactAudio2D) source.spatialBlend = 0f;
+        // PlayOneShot allows a shared scene source to finish older explosions too.
+        source.PlayOneShot(impactSound);
+        if (temporary) Destroy(source.gameObject, impactSound.length / Mathf.Max(0.01f, Mathf.Abs(source.pitch)) + 0.5f);
+    }
+    private void Update()
+    {
+        if (Launched && !Finished && !paused && propeller != null)
+            propeller.Rotate(Vector3.up, propellerDegreesPerSecond * Time.deltaTime, Space.Self);
     }
     private void OnDrawGizmosSelected()
     {

@@ -17,6 +17,15 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     public Transform startPoint;
     public JourneyStoneThrowController stoneController;
     public Button attackButton;
+    [Tooltip("Hide attack and defense while picking up, holding or throwing a stone.")]
+    public bool hideCombatButtonsWhileUsingStone = true;
+    private sealed class HiddenButton
+    {
+        public CanvasGroup group;
+        public float alpha;
+        public bool blocksRaycasts;
+    }
+    private readonly Dictionary<Button, HiddenButton> hiddenStoneButtons = new Dictionary<Button, HiddenButton>();
     public const string DefenseState = "Journey Sword Actions.ShieldBlock";
     [Header("Shield defense")]
     public Button defendButton;
@@ -144,6 +153,39 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
         else if (observedAttack || Time.time - attackStarted > 0.75f) EndAttack();
         // Covers a changed controller or a paused external animation graph.
         if (IsAttacking && Time.time - attackStarted > 15f) EndAttack();
+    }
+
+    private void LateUpdate()
+    {
+        bool hide = ready && hideCombatButtonsWhileUsingStone && stoneController != null &&
+            stoneController.isActiveAndEnabled && stoneController.IsUsingStone;
+        if (!hide) { RestoreStoneButtons(); return; }
+        HideStoneButton(attackButton);
+        HideStoneButton(defendButton);
+    }
+    private void HideStoneButton(Button button)
+    {
+        if (button == null) return;
+        if (!hiddenStoneButtons.TryGetValue(button, out HiddenButton saved))
+        {
+            var group = button.GetComponent<CanvasGroup>();
+            if (group == null) group = button.gameObject.AddComponent<CanvasGroup>();
+            saved = new HiddenButton { group = group, alpha = group.alpha, blocksRaycasts = group.blocksRaycasts };
+            hiddenStoneButtons.Add(button, saved);
+        }
+        if (saved.group == null) return;
+        saved.group.alpha = 0f;
+        saved.group.blocksRaycasts = false;
+    }
+    private void RestoreStoneButtons()
+    {
+        foreach (var saved in hiddenStoneButtons.Values)
+        {
+            if (saved.group == null) continue;
+            saved.group.alpha = saved.alpha;
+            saved.group.blocksRaycasts = saved.blocksRaycasts;
+        }
+        hiddenStoneButtons.Clear();
     }
 
     private bool CanAttack()
@@ -318,6 +360,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     private void Fail(string message) { Debug.LogError("JourneyPlayerCombat: " + message, this); enabled = false; }
     private void OnDisable()
     {
+        RestoreStoneButtons();
         if (attackButton != null) { attackButton.onClick.RemoveListener(TryAttack); attackButton.interactable = false; }
         if (defendButton != null) { defendButton.onClick.RemoveListener(TryDefend); defendButton.interactable = false; }
         EndDefense();

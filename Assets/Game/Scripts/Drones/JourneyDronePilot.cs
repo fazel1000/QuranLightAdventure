@@ -78,12 +78,20 @@ public sealed class JourneyDronePilot : MonoBehaviour
         savedCameraPosition = viewCamera.transform.position; savedCameraRotation = viewCamera.transform.rotation;
         active = true; cameraTaken = false;
         savedBehaviours.Clear(); savedUI.Clear();
-        if (suspendWhileFlying != null) foreach (var item in suspendWhileFlying) Suspend(item);
+        if (suspendWhileFlying != null) foreach (var item in suspendWhileFlying)
+            if (!(item is RightScreenDragArea) && item != gameCreatorCamera) Suspend(item);
         Suspend(vehicleDriver);
         if (onFootUI != null) foreach (var item in onFootUI)
-            if (item != null && !savedUI.ContainsKey(item)) { savedUI.Add(item, item.activeSelf); item.SetActive(false); }
+            if (!IsCameraDragUI(item)) HideUI(item);
         player.enabled = false;
         if (launchButton != null) launchButton.gameObject.SetActive(false);
+    }
+    private static bool IsCameraDragUI(GameObject item)
+    { return item != null && item.GetComponentInChildren<RightScreenDragArea>(true) != null; }
+    private void HideUI(GameObject item)
+    {
+        if (item == null || savedUI.ContainsKey(item)) return;
+        savedUI.Add(item, item.activeSelf); item.SetActive(false);
     }
     private void Suspend(Behaviour item)
     {
@@ -94,6 +102,13 @@ public sealed class JourneyDronePilot : MonoBehaviour
     private void TakeCamera()
     {
         cameraTaken = true;
+        // Return to the view chosen by the user during the launch delay.
+        savedCameraPosition = viewCamera.transform.position; savedCameraRotation = viewCamera.transform.rotation;
+        if (suspendWhileFlying != null) foreach (var item in suspendWhileFlying)
+            if (item is RightScreenDragArea) Suspend(item);
+        if (onFootUI != null) foreach (var item in onFootUI)
+            if (IsCameraDragUI(item)) HideUI(item);
+        RightScreenDragArea.ClearInput();
         if (gameCreatorCamera != null) gameCreatorCamera.enabled = false;
         JourneyMovementSettings.SetDrivingMode(true);
         FollowCamera(true);

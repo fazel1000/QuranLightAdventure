@@ -42,7 +42,8 @@ RenderSettings:
 --- !u!157 &4
 LightmapSettings:
   m_ObjectHideFlags: 0
-  serializedVersion: 12
+  serializedVersion: 13
+  m_BakeOnSceneLoad: 0
   m_GISettings:
     serializedVersion: 2
     m_BounceScale: 1
@@ -60753,6 +60754,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: FFE Wind Controller
       objectReference: {fileID: 0}
+    - target: {fileID: 1844354709233371272, guid: 8b89ba8ffb93baa44ba845958e8aa2a5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1844354709233371274, guid: 8b89ba8ffb93baa44ba845958e8aa2a5, type: 3}
       propertyPath: m_RootOrder
       value: 9
@@ -60897,6 +60902,10 @@ PrefabInstance:
     - target: {fileID: 2696184887282397899, guid: 8d2d1e873eee3624483b08b43135630c, type: 3}
       propertyPath: m_Name
       value: Water_Plane
+      objectReference: {fileID: 0}
+    - target: {fileID: 2696184887282397899, guid: 8d2d1e873eee3624483b08b43135630c, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

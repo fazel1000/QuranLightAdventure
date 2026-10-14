@@ -71,6 +71,8 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
 
     private void OnEnable()
     {
+        JourneyLocalization.Changed += RefreshStatusLanguage;
+        RefreshStatusLanguage();
         if (voiceService != null) voiceService.ScoreEvaluated += HandleScore;
     }
 
@@ -187,7 +189,13 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     public void Record()
     {
         if (!Select()) return;
-        if (!voiceService.IsReady) { ShowStatus("مدل هنوز آماده نیست"); return; }
+        if (!voiceService.IsReady)
+        {
+            string status = voiceService.PreparationStatus;
+            if (!voiceService.IsPreparing) voiceService.RetryPreparation();
+            ShowStatus(status);
+            return;
+        }
         voiceService.ToggleRecording();
     }
 
@@ -195,16 +203,28 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     {
         if (voiceService == null || voiceService.CurrentBoard != this) return;
         if (float.IsNaN(percentage) || float.IsInfinity(percentage)) return;
+        lastStatusMessage = null;
         int points = Mathf.FloorToInt(Mathf.Clamp(percentage, 0f, 100f) / 10f);
         if (scoreReceiver != null) scoreReceiver.AddVoicePoints(points);
         else Debug.LogError("JourneyVoiceBoard: assign Score Receiver to LightBrushPuzzle to add game points.", this);
         // Notification only. Do not connect this back to AddVoicePoints (double award).
         onPointsAdded.Invoke(points);
     }
+    private string lastStatusMessage;
+    private string lastRenderedStatus;
+    private void RefreshStatusLanguage()
+    {
+        var target = statusText != null ? statusText : percentText;
+        if (target != null && JourneyLocalizedText.Original(target) == lastRenderedStatus && !string.IsNullOrEmpty(lastStatusMessage))
+            ShowStatus(lastStatusMessage);
+    }
     private void ShowStatus(string message)
     {
-        if (statusText != null) statusText.text = message;
-        else if (percentText != null) percentText.text = message;
+        lastStatusMessage = message;
+        message = JourneyLocalization.Translate(message);
+        lastRenderedStatus = message;
+        if (statusText != null) JourneyLocalizedText.Write(statusText, message);
+        else if (percentText != null) JourneyLocalizedText.Write(percentText, message);
     }
 
     private void AnimateButton(bool play, bool pressed)
@@ -243,6 +263,7 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     }
     private void OnDisable()
     {
+        JourneyLocalization.Changed -= RefreshStatusLanguage;
         ReleasePointers();
         if (voiceService != null)
         {

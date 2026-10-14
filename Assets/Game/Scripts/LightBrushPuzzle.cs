@@ -88,6 +88,9 @@ public class LightBrushPuzzle : MonoBehaviour
 
     [Header("Success")]
     [SerializeField] private ParticleSystem successEffectPrefab;
+    [SerializeField, Min(0.1f)] private float successEffectDuration = 5f;
+    [Tooltip("Repeat the prefab's particle emission until Success Effect Duration expires.")]
+    [SerializeField] private bool loopSuccessEffectUntilTimeout = true;
     [SerializeField, Min(0f)] private float successEffectHeight = 0.8f;
     [Tooltip("Invoked once when all configured puzzles have been solved, in any order.")]
     [SerializeField] private UnityEvent onCompleted;
@@ -823,11 +826,14 @@ public class LightBrushPuzzle : MonoBehaviour
             foreach (ParticleSystem particleSystem in particleSystems)
             {
                 particleSystem.gameObject.SetActive(true);
-                particleSystem.Clear(true);
+                particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var main = particleSystem.main;
+                main.stopAction = ParticleSystemStopAction.None;
+                if (loopSuccessEffectUntilTimeout) main.loop = true;
                 particleSystem.Play(true);
             }
 
-            Destroy(effectObject, 5f);
+            Destroy(effectObject, Mathf.Max(0.1f, successEffectDuration));
             return;
         }
 

@@ -37,7 +37,7 @@ public sealed class JourneyMenuController : MonoBehaviour
     public bool IsGameplayActive => HasStartedGame && !IsMenuOpen;
 
     public enum GameLanguage { Persian = 0, English = 1, Arabic = 2 }
-    [Header("Language Buttons - translations will be added later")]
+    [Header("Language Buttons")]
     [SerializeField] private Button persianButton;
     [SerializeField] private Button englishButton;
     [SerializeField] private Button arabicButton;
@@ -61,6 +61,7 @@ public sealed class JourneyMenuController : MonoBehaviour
     private void Awake()
     {
         SelectedLanguage = (GameLanguage)Mathf.Clamp(PlayerPrefs.GetInt(LanguageKey, 0), 0, 2);
+        JourneyLocalization.SetLanguage((int)SelectedLanguage);
         // Migration: the obsolete selector must not initialize after removing its UI.
         foreach (JourneyLevelsController selector in FindObjectsByType<JourneyLevelsController>(
             FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -144,6 +145,7 @@ public sealed class JourneyMenuController : MonoBehaviour
     private void SelectLanguage(GameLanguage language)
     {
         SelectedLanguage = language;
+        JourneyLocalization.SetLanguage((int)language);
         PlayerPrefs.SetInt(LanguageKey, (int)language);
         PlayerPrefs.Save();
         onLanguageChanged?.Invoke((int)language);

@@ -31,6 +31,8 @@ public class QuranAssessmentEngine : MonoBehaviour
     [Tooltip("Safety net for recognizer versions that still return previous transcriptions as a prefix.")]
     [SerializeField] private bool removeAccumulatedRecognizerPrefix = true;
 
+    public string PreparationStage { get; private set; } = "در حال آماده شدن مدل…";
+    private string initializationError;
     private Task<string> startupModelPreparationTask;
     private readonly SemaphoreSlim transcriptionGate =
         new SemaphoreSlim(1, 1);
@@ -75,7 +77,7 @@ public class QuranAssessmentEngine : MonoBehaviour
         string error = await GetOrStartAndroidModelPreparationAsync();
         if (!string.IsNullOrEmpty(error)) return error;
         if (!realtimeSpeechRecognizer.IsInitialized) await InitializeRecognizerAsync();
-        return IsReady ? string.Empty : "Speech model could not be initialized.";
+        return IsReady ? string.Empty : initializationError ?? "Speech model could not be initialized. Check the Sherpa model ID and native plugin in the device log.";
     }
 
     public async Task<QuranAssessmentResult> AssessAsync(
@@ -211,6 +213,8 @@ public class QuranAssessmentEngine : MonoBehaviour
 
     private async Task InitializeRecognizerAsync()
     {
+        PreparationStage = "در حال راه‌اندازی موتور تشخیص صدا…";
+        initializationError = null;
         using (CancellationTokenSource timeout =
                new CancellationTokenSource(
                    TimeSpan.FromSeconds(initializationTimeoutSeconds)))
@@ -222,7 +226,7 @@ public class QuranAssessmentEngine : MonoBehaviour
             }
             catch (OperationCanceledException)
             {
-                // The readiness check below returns the user-facing error.
+                initializationError = "Speech model initialization timed out after " + initializationTimeoutSeconds + " seconds.";
             }
         }
     }
@@ -253,6 +257,7 @@ public class QuranAssessmentEngine : MonoBehaviour
         if (!realtimeSpeechRecognizer.IsInitialized)
             realtimeSpeechRecognizer.DisposeModule();
 
+        PreparationStage = "در حال آماده‌سازی فایل‌های مدل روی دستگاه…";
         string installError =
             await EnsureAndroidOfflineModelInstalledAsync();
 
@@ -263,10 +268,21 @@ public class QuranAssessmentEngine : MonoBehaviour
             await InitializeRecognizerAsync();
 
         if (!realtimeSpeechRecognizer.IsInitialized)
-            return "Quran phoneme model is not initialized.";
+            return initializationError ?? "Quran phoneme model is not initialized. Check the model ID and Sherpa native plugin.";
 #endif
 
         return string.Empty;
+    }
+
+    private static bool UsableBundledFile(string path, bool model)
+    {
+        if (!File.Exists(path) || new FileInfo(path).Length < (model ? 4096 : 1)) return false;
+        using (var stream = File.OpenRead(path))
+        {
+            byte[] buffer = new byte[128];
+            int count = stream.Read(buffer, 0, buffer.Length);
+            return !System.Text.Encoding.UTF8.GetString(buffer, 0, count).Contains("git-lfs.github.com/spec");
+        }
     }
 
     private async Task<string> EnsureAndroidOfflineModelInstalledAsync()
@@ -275,6 +291,8 @@ public class QuranAssessmentEngine : MonoBehaviour
         if (string.IsNullOrWhiteSpace(offlineModelId))
             return "Offline Quran model ID is empty.";
 
+        offlineModelId = offlineModelId.Trim();
+        offlineModelFileName = (offlineModelFileName ?? "").Trim();
         string relativeDirectory =
             CombineAsUrl(
                 "sherpa-onnx",
@@ -317,8 +335,7 @@ public class QuranAssessmentEngine : MonoBehaviour
 
             try
             {
-                if (File.Exists(destinationPath) &&
-                    new FileInfo(destinationPath).Length > 0)
+                if (UsableBundledFile(destinationPath, fileName == offlineModelFileName))
                 {
                     continue;
                 }
@@ -340,33 +357,45 @@ public class QuranAssessmentEngine : MonoBehaviour
                 if (File.Exists(temporaryPath))
                     File.Delete(temporaryPath);
 
-                using (UnityWebRequest request =
-                       UnityWebRequest.Get(sourceUrl))
+                PreparationStage = "در حال استخراج مدل از فایل بازی: " + fileName;
+                // Use the normal package path first, then the explicitly bundled fallback.
+                var sources = new List<string> { sourceUrl };
+                if (offlineModelId == "quran-streaming-zipformer2-ctc" && offlineModelFileName == "model.int8.onnx")
+                    sources.Add(Application.streamingAssetsPath.TrimEnd('/', '\\') + "/JourneyQuranOffline/" +
+                        (fileName == offlineModelFileName ? "model.bytes" : "tokens.bytes"));
+                bool copied = false;
+                string failures = "";
+                foreach (string source in sources)
                 {
-                    request.downloadHandler =
-                        new DownloadHandlerFile(temporaryPath, false);
-
-                    UnityWebRequestAsyncOperation operation =
-                        request.SendWebRequest();
-
-                    while (!operation.isDone)
-                        await Task.Yield();
-
-                    if (request.result != UnityWebRequest.Result.Success)
+                    if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+                    using (UnityWebRequest request = UnityWebRequest.Get(source))
                     {
-                        if (File.Exists(temporaryPath))
-                            File.Delete(temporaryPath);
-
-                        return
-                            "Offline Quran model could not be copied from the APK. " +
-                            fileName + ": " + request.error;
+                        request.timeout = Mathf.CeilToInt(initializationTimeoutSeconds);
+                        request.downloadHandler = new DownloadHandlerFile(temporaryPath, false);
+                        var operation = request.SendWebRequest();
+                        while (!operation.isDone) await Task.Yield();
+                        if (request.result == UnityWebRequest.Result.Success &&
+                            UsableBundledFile(temporaryPath, fileName == offlineModelFileName))
+                        { copied = true; break; }
+                        string detail = source + " => " + request.result + " / " + request.responseCode + " / " + request.error;
+                        Debug.LogWarning("Quran bundled file extraction: " + detail);
+                        failures += detail + "\n";
                     }
+                }
+                if (!copied)
+                {
+                    if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+                    Debug.LogError("Quran model extraction failed:\n" + failures);
+                    return "Bundled file unavailable: " + fileName +
+                        ". Check Offline Model ID / Filename and run Quran Kids > Inspect Quran Model In APK or AAB on this build. Details are in the device log.";
                 }
 
                 if (File.Exists(destinationPath))
                     File.Delete(destinationPath);
 
                 File.Move(temporaryPath, destinationPath);
+                if (!UsableBundledFile(destinationPath, fileName == offlineModelFileName))
+                    return "Bundled model file is empty, too small or a Git LFS pointer: " + fileName + ". Restore the actual file and rebuild.";
             }
             catch (Exception ex)
             {

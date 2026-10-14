@@ -51,6 +51,13 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     public bool IsRecordPending => requestingPermission;
     public bool IsAssessing => assessing;
     public bool IsReady => ready && !preparing;
+    public bool IsPreparing => preparing;
+    public string LastPreparationError { get; private set; }
+    public string PreparationStatus => IsReady ? "آمادهٔ ضبط" : preparing
+        ? (assessmentEngine != null ? assessmentEngine.PreparationStage : "در حال آماده شدن مدل…")
+        : !string.IsNullOrEmpty(LastPreparationError) ? "خطای مدل: " + LastPreparationError : "مدل هنوز آماده نیست";
+    public bool IsAudioBusy => isActiveAndEnabled && (requestingPermission || assessing ||
+        (recorder != null && recorder.IsRecording) || (verseAudioSource != null && verseAudioSource.isPlaying));
     public event Action<float> ScoreEvaluated;
     private float recordingPressDelay;
     private Coroutine recordingRequest;
@@ -114,6 +121,8 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
 
     private void OnEnable()
     {
+        JourneyLocalization.Changed += RefreshStatusLanguage;
+        RefreshStatusLanguage();
         ready = false;
         preparing = true;
         if (playButton != null) playButton.onClick.AddListener(PlayVerse);
@@ -134,6 +143,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     {
         int version = generation;
         preparing = true;
+        LastPreparationError = null;
         SetStatus("در حال آماده شدن…");
         try
         {
@@ -155,7 +165,8 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
             if (this != null && version == generation)
             {
                 ready = false;
-                SetStatus("آماده‌سازی انجام نشد؛ دوباره امتحان کن");
+                LastPreparationError = ex.Message;
+                SetStatus("خطای آماده‌سازی مدل: " + ex.Message);
                 Debug.LogException(ex, this);
                 preparation = null;
             }
@@ -285,17 +296,25 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
             if (icon != null) recordIcon.sprite = icon;
         }
     }
+    private string lastStatusMessage;
+    private void RefreshStatusLanguage()
+    {
+        if (!string.IsNullOrEmpty(lastStatusMessage)) SetStatus(lastStatusMessage);
+    }
     private void SetStatus(string text)
     {
-        if (statusText != null && statusText != percentText) statusText.text = text;
-        else if (percentText != null && text != "بررسی انجام شد")
+        lastStatusMessage = text;
+        text = JourneyLocalization.Translate(text);
+        if (statusText != null && statusText != percentText) JourneyLocalizedText.Write(statusText, text);
+        else if (percentText != null && lastStatusMessage != "بررسی انجام شد")
         {
             ApplyPercentTextSize(statusFontSize);
-            percentText.text = text;
+            JourneyLocalizedText.Write(percentText, text);
         }
     }
     private void SetPercent(float? score)
     {
+        lastStatusMessage = null;
         if (percentText == null) return;
         string value = score.HasValue ? Mathf.FloorToInt(Mathf.Clamp(score.Value, 0, 100)).ToString() + "٪" : "—";
         if (usePersianDigits)
@@ -325,6 +344,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     }
     private void OnDisable()
     {
+        JourneyLocalization.Changed -= RefreshStatusLanguage;
         generation++;
         StopAllCoroutines();
         requestingPermission = preparing = false;

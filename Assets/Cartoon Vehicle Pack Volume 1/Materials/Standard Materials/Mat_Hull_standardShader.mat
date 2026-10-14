@@ -12,14 +12,13 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _EMISSION
   - _ENVIRONMENTREFLECTIONS_OFF
   - _SPECGLOSSMAP
   m_InvalidKeywords:
   - TCP2_MC
   - TCP2_RAMPTEXT
   - _GLOSSYREFLECTIONS_OFF
-  m_LightmapFlags: 1
+  m_LightmapFlags: 0
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -142,7 +141,7 @@ Material:
     - _Glossiness: 0.6
     - _GlossyReflections: 0
     - _IsUseEmission: 0
-    - _Metallic: 0.5
+    - _Metallic: 0
     - _Metl: 0
     - _Mode: 0
     - _OcclusionStrength: 1
@@ -180,7 +179,7 @@ Material:
     - _Color0: {r: 0, g: 0, b: 0, a: 0}
     - _Color1: {r: 0, g: 0, b: 0, a: 0}
     - _DiffuseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _EmissionColor: {r: 0.9528302, g: 0.4719206, b: 0.4719206, a: 1}
+    - _EmissionColor: {r: 0.9528302, g: 0.4719206, b: 0.514, a: 1}
     - _HColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
     - _OutlineColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
     - _ReflectColor: {r: 1, g: 1, b: 1, a: 0.5}

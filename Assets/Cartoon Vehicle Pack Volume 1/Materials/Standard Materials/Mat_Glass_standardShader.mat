@@ -25,11 +25,10 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _EMISSION
   - _ENVIRONMENTREFLECTIONS_OFF
   m_InvalidKeywords:
   - _GLOSSYREFLECTIONS_OFF
-  m_LightmapFlags: 1
+  m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -131,7 +130,7 @@ Material:
     - _ShadeMax: 1
     - _ShadeMin: -1
     - _Shininess: 0.7
-    - _Smoothness: 0.765
+    - _Smoothness: 0
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
