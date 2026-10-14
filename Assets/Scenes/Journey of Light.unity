@@ -15936,6 +15936,8 @@ MonoBehaviour:
   moveVolume: 0.65
   successVolume: 0.85
   successEffectPrefab: {fileID: 1806299633}
+  successEffectDuration: 5
+  loopSuccessEffectUntilTimeout: 1
   successEffectHeight: 0.8
   onCompleted:
     m_PersistentCalls:
