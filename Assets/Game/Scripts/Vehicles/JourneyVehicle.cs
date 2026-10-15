@@ -16,6 +16,18 @@ public sealed class JourneyVehicle : MonoBehaviour
     public Wheel[] wheels = new Wheel[4];
     public Transform driverSeat, exitPoint, cameraTarget;
     public BoxCollider bodyCollider;
+    [Header("Independent wheel suspension")]
+    public bool tuneSuspension = true;
+    [Range(0.1f, 0.8f)] public float suspensionTravel = 0.35f;
+    [Range(1f, 4f)] public float suspensionFrequency = 2f;
+    [Range(0.2f, 1.5f)] public float suspensionDampingRatio = 0.85f;
+    [Range(0f, 1f)] public float suspensionTargetPosition = 0.5f;
+    [Header("Unoccupied push resistance")]
+    [Range(1f, 4f)] public float parkedMassMultiplier = 1.5f;
+    [Min(0f)] public float parkedResistance = 5f;
+    [Min(1f)] public float parkingBrakeMultiplier = 1.5f;
+    private float drivingMass;
+    private bool parkingApplied;
     [Header("Driving")]
     [Min(1f)] public float motorTorque = 1200f;
     [Min(1f)] public float brakeTorque = 3000f;
@@ -79,6 +91,7 @@ public sealed class JourneyVehicle : MonoBehaviour
         if (Ready) foreach (Wheel wheel in wheels)
             if (wheel == null || wheel.collider == null || wheel.visual == null) Ready = false;
         if (!Ready) { Debug.LogError("JourneyVehicle: run Setup Journey Vehicle and assign all four wheels and markers.", this); return; }
+        drivingMass = Body.mass;
         Body.centerOfMass = centerOfMass;
         nitroRemaining = nitroSeconds;
         foreach (Wheel wheel in wheels)
@@ -90,10 +103,31 @@ public sealed class JourneyVehicle : MonoBehaviour
             wheel.rotationOffset = Quaternion.Inverse(wheel.collider.transform.rotation) * wheel.visual.rotation;
             wheel.collider.ConfigureVehicleSubsteps(5f, 5, 8);
         }
+        ApplyParkingMass();
+    }
+    private void ApplyParkingMass()
+    {
+        if (drivingMass <= 0f || Body == null) return;
+        parkingApplied = !IsOccupied;
+        Body.mass = drivingMass * (parkingApplied ? Mathf.Max(1f, parkedMassMultiplier) : 1f);
+        if (!tuneSuspension) return;
+        float wheelMass = Body.mass / Mathf.Max(1, wheels.Length);
+        float omega = 2f * Mathf.PI * suspensionFrequency;
+        foreach (var wheel in wheels)
+        {
+            if (wheel == null || wheel.collider == null) continue;
+            wheel.collider.suspensionDistance = suspensionTravel;
+            var spring = wheel.collider.suspensionSpring;
+            spring.spring = wheelMass * omega * omega;
+            spring.damper = 2f * suspensionDampingRatio * wheelMass * omega;
+            spring.targetPosition = suspensionTargetPosition;
+            wheel.collider.suspensionSpring = spring;
+        }
     }
     public void SetOccupied(bool occupied)
     {
         IsOccupied = occupied;
+        ApplyParkingMass();
         CancelNitro();
         reversePedal = false; effectiveThrottle = 0f; effectiveBrake = 0f;
         brake = 1f; // Synthetic parking input must not count as a reverse-button press.
@@ -141,9 +175,15 @@ public sealed class JourneyVehicle : MonoBehaviour
     private void FixedUpdate()
     {
         if (!Ready || frozen || Body.isKinematic) { CancelNitro(); return; }
+        if (parkingApplied == IsOccupied || !IsOccupied && Mathf.Abs(Body.mass - drivingMass * parkedMassMultiplier) > 0.01f) ApplyParkingMass();
         float signedSpeed = Vector3.Dot(Body.linearVelocity, transform.forward) * 3.6f;
         bool grounded = false;
         foreach (Wheel wheel in wheels) if (wheel.collider.isGrounded) { grounded = true; break; }
+        if (!IsOccupied && grounded)
+        {
+            Vector3 planar = Vector3.ProjectOnPlane(Body.linearVelocity, Vector3.up);
+            Body.AddForce(-planar * Mathf.Min(parkedResistance, 1f / Time.fixedDeltaTime), ForceMode.Acceleration);
+        }
         if (nitroRequested)
         {
             nitroRequested = false;
@@ -199,7 +239,7 @@ public sealed class JourneyVehicle : MonoBehaviour
             wheel.collider.steerAngle = wheel.steering ? turn : 0f;
             wheel.collider.motorTorque = IsOccupied && effectiveBrake < 0.01f && speed < limit
                 ? motorTorque * drive * (drive < 0f ? reverseTorqueMultiplier : boost ? nitroMultiplier : 1f) / 4f : 0f;
-            wheel.collider.brakeTorque = !IsOccupied ? brakeTorque : Mathf.Max(brakeTorque * effectiveBrake, Mathf.Abs(drive) < 0.01f ? coastingTorque : 0f);
+            wheel.collider.brakeTorque = !IsOccupied ? brakeTorque * parkingBrakeMultiplier : Mathf.Max(brakeTorque * effectiveBrake, Mathf.Abs(drive) < 0.01f ? coastingTorque : 0f);
         }
         if (boost && speed < limit)
         {

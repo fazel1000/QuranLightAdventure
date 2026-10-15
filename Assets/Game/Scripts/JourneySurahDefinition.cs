@@ -23,6 +23,8 @@ public sealed class JourneySurahDefinition : ScriptableObject
         public AudioClip verseAudio;
         [TextArea(2, 5), Tooltip("Leave empty to display aya_display_text from the Quran JSON.")]
         public string displayText;
+        [TextArea(2, 6)] public string persianTranslation;
+        [TextArea(2, 6)] public string englishTranslation;
     }
 
     public bool TryGetVerse(int number, out VerseEntry entry)

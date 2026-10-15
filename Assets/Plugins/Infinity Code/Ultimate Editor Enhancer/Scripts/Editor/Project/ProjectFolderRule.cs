@@ -102,6 +102,15 @@ namespace InfinityCode.UltimateEditorEnhancer.ProjectTools
                 return new Rect(rect.x - 1, rect.y - 1, rect.width + 2, rect.width + 2);
             }
             
+#if UNITY_6000_0_OR_NEWER
+            // Unity 6 small-row callbacks include icon overlay padding. Grid view above is unchanged.
+            float offset = EditorPrefs.GetFloat("Journey.FolderIconOffsetX", 7f);
+            float size = EditorPrefs.GetFloat("Journey.FolderIconSize", 16f);
+            string nativeName = isEmpty ? "FolderEmpty Icon" : expanded ? "FolderOpened Icon" : "Folder Icon";
+            var native = EditorGUIUtility.IconContent(nativeName).image;
+            if (native != null) folderTexture = native;
+            return new Rect(rect.x + offset, rect.y + (rect.height - size) * 0.5f, size, size);
+#else
             if (isEmpty) folderTexture = Icons.folderEmpty;
             else if (expanded) folderTexture = Icons.folderOpen;
 
@@ -116,6 +125,7 @@ namespace InfinityCode.UltimateEditorEnhancer.ProjectTools
             }
 
             return new Rect(rect.x + 2, rect.y - 1, rect.height + 2, rect.height + 2);
+#endif
         }
 
         public void SetDirty()

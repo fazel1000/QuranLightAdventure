@@ -18,7 +18,7 @@ public static class JourneyLocalizationSetup
         {
             if (!(component is JourneyVoiceBoard) && !(component is JourneyVerseVoicePanel)) continue;
             var data = new SerializedObject(component);
-            foreach (string field in new[] { "verseText", "percentText", "statusText" })
+            foreach (string field in new[] { "verseText", "percentText", "statusText", "translateText" })
             { var property = data.FindProperty(field); if (property != null) excluded.Add(property.objectReferenceValue); }
         }
         foreach (var menu in Object.FindObjectsByType<JourneyMenuController>(FindObjectsInactive.Include, FindObjectsSortMode.None))

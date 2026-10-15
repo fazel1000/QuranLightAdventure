@@ -95,6 +95,13 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
          animator.GetLayerIndex(pickupLayerName) >= 0 &&
          animator.GetLayerWeight(animator.GetLayerIndex(pickupLayerName)) > 0.01f);
     public void CancelForRespawn() { SuspendInteraction(); }
+    public Transform HandSocket => handSocket;
+    public Transform ThrowOrigin => throwOrigin;
+    public void RebindCharacterAnimator(Animator replacement)
+    {
+        SuspendInteraction();
+        animator = replacement;
+    }
 
     public bool CanContinueFlight => initialized && hasFocus && !paused && isActiveAndEnabled && menu != null && menu.IsGameplayActive;
     private JourneyThrowableStone held;

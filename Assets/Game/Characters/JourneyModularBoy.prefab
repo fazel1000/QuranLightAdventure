@@ -1,0 +1,80 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &4220024820573318213
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3956740505558128279, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7250621617111371448, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      propertyPath: m_Name
+      value: JourneyModularBoy
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7250621617111371448, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4788870430044038161}
+  m_SourcePrefab: {fileID: 100100000, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+--- !u!1 &6777895196449022717 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7250621617111371448, guid: 950ba5f04b4fdd44b8d9d060fd9d2857, type: 3}
+  m_PrefabInstance: {fileID: 4220024820573318213}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &4788870430044038161
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6777895196449022717}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 230b60fe694569e4e9616e3965c3adf7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hatOptions: []

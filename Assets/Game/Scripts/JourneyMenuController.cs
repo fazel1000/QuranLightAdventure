@@ -26,6 +26,13 @@ public sealed class JourneyMenuController : MonoBehaviour
     [Header("Gameplay Back Button (optional)")]
     [SerializeField] private Button gameplayBackButton;
 
+    [Header("First launch language selection")]
+    [SerializeField] private GameObject firstPanel;
+    [SerializeField] private Button firstPersianButton, firstEnglishButton, firstArabicButton;
+    [SerializeField] private bool alwaysShowFirstPanel;
+    private const string FirstLanguageKey = "JourneyOfLight.FirstLanguageChosen";
+    private bool firstLanguageOpen;
+    public bool IsFirstLanguageOpen => firstLanguageOpen;
     private JourneyUIFeedback feedback;
 
     [Header("Game Creator Player (optional: found automatically)")]
@@ -81,7 +88,14 @@ public sealed class JourneyMenuController : MonoBehaviour
     private void Start()
     {
         started = true;
-        ShowMainMenu();
+        bool showFirst = firstPanel != null && (alwaysShowFirstPanel || PlayerPrefs.GetInt(FirstLanguageKey, 0) == 0);
+        if (showFirst && firstPersianButton != null && firstEnglishButton != null && firstArabicButton != null)
+        { firstLanguageOpen = true; ShowPanel(firstPanel); }
+        else
+        {
+            if (showFirst) Debug.LogWarning("First Panel requires all three first-launch language buttons.", this);
+            ShowMainMenu();
+        }
         onLanguageChanged?.Invoke((int)SelectedLanguage);
     }
 
@@ -115,6 +129,7 @@ public sealed class JourneyMenuController : MonoBehaviour
 
     public void ShowMainMenu()
     {
+        if (firstLanguageOpen) { ShowPanel(firstPanel); return; }
         ShowPanel(mainMenuPanel);
     }
 
@@ -123,7 +138,7 @@ public sealed class JourneyMenuController : MonoBehaviour
 
     public void StartGame()
     {
-        if (!isActiveAndEnabled || IsGameplayActive) return;
+        if (!isActiveAndEnabled || IsGameplayActive || firstLanguageOpen) return;
         if (!HasStartedGame)
         {
             if (startPoint == null || player == null || player.Driver == null)
@@ -149,6 +164,12 @@ public sealed class JourneyMenuController : MonoBehaviour
         PlayerPrefs.SetInt(LanguageKey, (int)language);
         PlayerPrefs.Save();
         onLanguageChanged?.Invoke((int)language);
+        if (firstLanguageOpen)
+        {
+            PlayerPrefs.SetInt(FirstLanguageKey, 1); PlayerPrefs.Save();
+            firstLanguageOpen = false;
+            ShowMainMenu();
+        }
     }
 
     private void OnPersianClicked() => PlayClick(persianButton, JourneyUIFeedback.ButtonSound.Settings, SelectPersian);
@@ -157,7 +178,7 @@ public sealed class JourneyMenuController : MonoBehaviour
 
     public void ShowSettings()
     {
-        ShowPanel(settingPanel);
+        if (!firstLanguageOpen) ShowPanel(settingPanel);
     }
 
     // Preserve old Inspector calls while ensuring the initial spawn is applied.
@@ -167,6 +188,7 @@ public sealed class JourneyMenuController : MonoBehaviour
         ClearSelection();
         mainMenuPanel.SetActive(false);
         settingPanel.SetActive(false);
+        if (firstPanel != null) firstPanel.SetActive(false);
         currentPanel = null;
         feedback.StopMenuMusic();
         RestoreGameplayInput();
@@ -191,6 +213,7 @@ public sealed class JourneyMenuController : MonoBehaviour
 
         mainMenuPanel.SetActive(target == mainMenuPanel);
         settingPanel.SetActive(target == settingPanel);
+        if (firstPanel != null) firstPanel.SetActive(target == firstPanel);
         target.transform.SetAsLastSibling();
         feedback.ShowMenuMusic(false);
 
@@ -317,6 +340,9 @@ public sealed class JourneyMenuController : MonoBehaviour
         Bind(startButton, OnStartClicked, add);
         Bind(settingButton, OnSettingsClicked, add);
         Bind(exitButton, OnExitClicked, add);
+        Bind(firstPersianButton, SelectPersian, add);
+        Bind(firstEnglishButton, SelectEnglish, add);
+        Bind(firstArabicButton, SelectArabic, add);
         Bind(persianButton, OnPersianClicked, add);
         Bind(englishButton, OnEnglishClicked, add);
         Bind(arabicButton, OnArabicClicked, add);
@@ -364,6 +390,8 @@ public sealed class JourneyMenuController : MonoBehaviour
         if (add) button.onClick.AddListener(action);
     }
 
+    [ContextMenu("Reset first-launch language choice")]
+    private void ResetFirstLanguageChoice() { PlayerPrefs.DeleteKey(FirstLanguageKey); PlayerPrefs.Save(); }
     private bool ValidateReferences()
     {
         if (mainMenuPanel == null || settingPanel == null || startButton == null ||

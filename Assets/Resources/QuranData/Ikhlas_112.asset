@@ -17,15 +17,30 @@ MonoBehaviour:
   - verseNumber: 1
     verseAudio: {fileID: 8300000, guid: 98d8c1f688156ce41945d7cb22d0614e, type: 3}
     displayText: 
+    persianTranslation: "\u0628\u0647 \u0646\u0627\u0645 \u062E\u062F\u0627\u0648\u0646\u062F
+      \u0628\u062E\u0634\u0646\u062F\u0647\u0654 \u0645\u0647\u0631\u0628\u0627\u0646"
+    englishTranslation: In the name of Allah, the Most Merciful, the Ever Merciful.
   - verseNumber: 2
     verseAudio: {fileID: 8300000, guid: d71fe29baca51c040b2147df89cfa41b, type: 3}
     displayText: 
+    persianTranslation: "\u0628\u06AF\u0648: \u0627\u0648 \u062E\u062F\u0627\u0648\u0646\u062F
+      \u06CC\u06AF\u0627\u0646\u0647 \u0627\u0633\u062A."
+    englishTranslation: 'Say: He is Allah, the One.'
   - verseNumber: 3
     verseAudio: {fileID: 8300000, guid: e97a1b21e2fdafd498498d7637165563, type: 3}
     displayText: 
+    persianTranslation: "\u062E\u062F\u0627\u0648\u0646\u062F \u0628\u06CC\u200C\u0646\u06CC\u0627\u0632
+      \u0627\u0633\u062A."
+    englishTranslation: Allah is free of need; all depend on Him.
   - verseNumber: 4
     verseAudio: {fileID: 8300000, guid: 430b03489c2e7b74b8fc2c453e4b4868, type: 3}
     displayText: 
+    persianTranslation: "\u0646\u0647 \u0632\u0627\u062F\u0647 \u0627\u0633\u062A
+      \u0648 \u0646\u0647 \u0632\u0627\u062F\u0647 \u0634\u062F\u0647 \u0627\u0633\u062A."
+    englishTranslation: He neither begets nor was born.
   - verseNumber: 5
     verseAudio: {fileID: 8300000, guid: 39942bd1cad47864aba44f432618ce53, type: 3}
     displayText: 
+    persianTranslation: "\u0648 \u0647\u06CC\u0686\u200C\u06A9\u0633 \u0647\u0645\u062A\u0627\u06CC
+      \u0627\u0648 \u0646\u06CC\u0633\u062A."
+    englishTranslation: And none is equal to Him.

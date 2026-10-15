@@ -71,6 +71,10 @@ public class LightBrushPuzzle : MonoBehaviour
     [Header("Puzzle Finished: Area 1 = 1-5; Area 2 = 6-7")]
     [SerializeField] private PuzzleFinishedEvent onPuzzleCompleted = new PuzzleFinishedEvent();
 
+    [Header("Connection progress")]
+    [SerializeField] private bool keepCorrectConnections = true;
+    private int[] connectedWordIndices;
+
     [Header("Light Line")]
     [SerializeField] private Color glowColor = new Color(0.05f, 0.85f, 1f, 0.42f);
     [SerializeField] private Color coreColor = new Color(0.8f, 1f, 1f, 1f);
@@ -317,7 +321,7 @@ public class LightBrushPuzzle : MonoBehaviour
         int selected = -1;
         for (int index = 0; index < wordGroups.Length; index++)
         {
-            if (playablePuzzles[index] && !solvedPuzzles[index] && wordGroups[index][0] == letter)
+            if (playablePuzzles[index] && !solvedPuzzles[index] && wordGroups[index][keepCorrectConnections && connectedWordIndices != null ? connectedWordIndices[index] : 0] == letter)
             {
                 selected = index;
                 break;
@@ -325,10 +329,10 @@ public class LightBrushPuzzle : MonoBehaviour
         }
         if (selected < 0) return;
 
-        ClearUnfinishedSegments();
+        if (!keepCorrectConnections) ClearUnfinishedSegments();
         puzzleIndex = selected;
         drawing = true;
-        currentLetter = 0;
+        currentLetter = keepCorrectConnections ? connectedWordIndices[selected] : 0;
         PlayMoveSound(0.45f);
     }
 
@@ -347,6 +351,7 @@ public class LightBrushPuzzle : MonoBehaviour
 
         Transform previousLetter = ActiveWords[currentLetter];
         currentLetter++;
+        connectedWordIndices[puzzleIndex] = currentLetter;
 
         GetConnectionPoints(previousLetter, letter, out Vector3 from, out Vector3 to);
         CreateLightSegment(from, to);
@@ -482,6 +487,7 @@ public class LightBrushPuzzle : MonoBehaviour
         wordGroups = new[] { bismillahWords, ayah1Words, ayah2Words,
             ayah3Words, ayah4Words, salamAlaykomLetters, alHamdolellahLetters };
         solvedPuzzles = new bool[wordGroups.Length];
+        connectedWordIndices = new int[wordGroups.Length];
         SolvedPuzzleCount = 0;
         TotalScore = 0;
         configurationValid = ValidateWords();
@@ -1041,7 +1047,7 @@ public class LightBrushPuzzle : MonoBehaviour
     {
         drawing = false;
         currentLetter = 0;
-        ClearUnfinishedSegments();
+        if (!keepCorrectConnections) ClearUnfinishedSegments();
     }
 
     private void ClearUnfinishedSegments()

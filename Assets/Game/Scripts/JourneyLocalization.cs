@@ -19,7 +19,27 @@ public static class JourneyLocalization
         string selected = Language == 1 ? english : Language == 2 ? arabic : persian;
         return string.IsNullOrEmpty(selected) ? persian : selected;
     }
+    public static string FormatPercent(float score)
+    {
+        string text = Mathf.FloorToInt(Mathf.Clamp(score, 0, 100)).ToString(global::System.Globalization.CultureInfo.InvariantCulture);
+        if (Language != 1)
+        {
+            char zero = Language == 2 ? '٠' : '۰';
+            for (int i = 0; i < 10; i++) text = text.Replace((char)('0' + i), (char)(zero + i));
+        }
+        return text + (Language == 1 ? "%" : "٪");
+    }
+    public static void WritePercent(TMPro.TMP_Text target, float score)
+    {
+        if (target == null) return;
+        if (target is RTLTMPro.RTLTextMeshPro rtl) rtl.PreserveNumbers = true;
+        if (target is RTLTMPro.RTLTextMeshPro3D rtl3d) rtl3d.PreserveNumbers = true;
+        JourneyLocalizedText.Write(target, FormatPercent(score));
+    }
     private static readonly string[][] Entries = {
+        new[] { "اول جعبه‌های کلمات این آیه را پیدا کن و درست به هم وصل کن", "First find and correctly connect this verse's word boxes", "اعثر أولًا على صناديق كلمات هذه الآية وصِلْها بالترتيب الصحيح" },
+        new[] { "شخصی‌سازی", "Customize", "تخصيص الشخصية" },
+        new[] { "پرش", "Jump", "قفز" },
         new[] { "شروع", "Start", "ابدأ" },
         new[] { "شروع بازی", "Start game", "ابدأ اللعب" },
         new[] { "ادامه", "Continue", "متابعة" },

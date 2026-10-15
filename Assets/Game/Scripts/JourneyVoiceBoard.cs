@@ -32,6 +32,29 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     [SerializeField] private TMP_Text percentText;
     [SerializeField] private TMP_Text statusText;
 
+    [Header("Translation and recording unlock")]
+    [SerializeField] private TMP_Text translateText;
+    [SerializeField] private bool requireWordPuzzle = true;
+    [Tooltip("0 maps Ikhlas JSON entries 1-5 automatically; for other surahs assign the correct puzzle number.")]
+    [SerializeField, Min(0)] private int requiredPuzzleNumber;
+    [TextArea] [SerializeField] private string persianTranslationOverride;
+    [TextArea] [SerializeField] private string englishTranslationOverride;
+    public bool CanRecord => !requireWordPuzzle || (scoreReceiver != null && scoreReceiver.IsPuzzleSolved(RequiredPuzzle));
+    private int RequiredPuzzle => requiredPuzzleNumber > 0 ? requiredPuzzleNumber :
+        surah != null && surah.surahNumber == 112 ? verseNumber :
+        verse != null && verse.surahNumber == 112 ? verse.verseNumber : 0;
+    public const string LockedMessage = "اول جعبه‌های کلمات این آیه را پیدا کن و درست به هم وصل کن";
+    private float? boardScore;
+    private string renderedScore;
+    [Header("3D button colors (assign only button surface renderers)")]
+    [SerializeField] private Renderer[] playRenderers;
+    [SerializeField] private Renderer[] recordRenderers;
+    [SerializeField] private Color playingColor = new Color(0.15f, 0.85f, 0.25f);
+    [SerializeField] private Color recordingColor = new Color(1f, 0.1f, 0.12f);
+    [SerializeField] private Color pendingColor = new Color(1f, 0.65f, 0.05f);
+    [SerializeField] private Color lockedColor = new Color(0.35f, 0.35f, 0.35f);
+    private JourneyBoardTint playTint, recordTint;
+
     [Header("Button movement in parent-local coordinates")]
     [SerializeField] private Vector3 pressedOffset = new Vector3(0.1f, 0f, 0f);
     [SerializeField, Min(0.01f)] private float moveDuration = 0.18f;
@@ -66,13 +89,22 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
         if (verseText != null) verseText.raycastTarget = false;
         if (percentText != null) { percentText.raycastTarget = false; percentText.text = "—"; }
         if (statusText != null) statusText.raycastTarget = false;
+        if (translateText == null)
+            foreach (var label in GetComponentsInChildren<TMP_Text>(true))
+                if (label.name == "Translate Text") { translateText = label; break; }
+        if (translateText != null) translateText.raycastTarget = false;
+        playTint = new JourneyBoardTint(playRenderers);
+        recordTint = new JourneyBoardTint(recordRenderers);
         initialized = true;
+        RefreshTranslation();
     }
 
     private void OnEnable()
     {
         JourneyLocalization.Changed += RefreshStatusLanguage;
         RefreshStatusLanguage();
+        JourneyLocalization.Changed += RefreshTranslation;
+        RefreshTranslation();
         if (voiceService != null) voiceService.ScoreEvaluated += HandleScore;
     }
 
@@ -93,6 +125,9 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
         }
         else { menuWasOpen = false; ReadPresses(); }
         bool selected = voiceService.CurrentBoard == this;
+        playTint?.Set(selected && voiceService.IsPlaying ? playingColor : (Color?)null);
+        recordTint?.Set(!CanRecord ? lockedColor : selected && voiceService.IsRecording ? recordingColor :
+            selected && (voiceService.IsRecordPending || voiceService.IsAssessing) ? pendingColor : (Color?)null);
         AnimateButton(true, selected && voiceService.IsPlaying);
         AnimateButton(false, selected && (voiceService.IsRecording || voiceService.IsRecordPending));
     }
@@ -189,6 +224,7 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     public void Record()
     {
         if (!Select()) return;
+        if (!CanRecord) { ShowStatus(LockedMessage); return; }
         if (!voiceService.IsReady)
         {
             string status = voiceService.PreparationStatus;
@@ -204,11 +240,31 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
         if (voiceService == null || voiceService.CurrentBoard != this) return;
         if (float.IsNaN(percentage) || float.IsInfinity(percentage)) return;
         lastStatusMessage = null;
+        boardScore = percentage;
+        RenderBoardScore();
         int points = Mathf.FloorToInt(Mathf.Clamp(percentage, 0f, 100f) / 10f);
         if (scoreReceiver != null) scoreReceiver.AddVoicePoints(points);
         else Debug.LogError("JourneyVoiceBoard: assign Score Receiver to LightBrushPuzzle to add game points.", this);
         // Notification only. Do not connect this back to AddVoicePoints (double award).
         onPointsAdded.Invoke(points);
+    }
+    private void RenderBoardScore()
+    {
+        if (!boardScore.HasValue || percentText == null) return;
+        JourneyLocalization.WritePercent(percentText, boardScore.Value);
+        renderedScore = JourneyLocalizedText.Original(percentText);
+    }
+    private void RefreshTranslation()
+    {
+        if (translateText != null)
+        {
+            string fa = persianTranslationOverride, en = englishTranslationOverride;
+            if (surah != null && surah.TryGetVerse(verseNumber, out var entry))
+            { if (string.IsNullOrEmpty(fa)) fa = entry.persianTranslation; if (string.IsNullOrEmpty(en)) en = entry.englishTranslation; }
+            string value = JourneyLocalization.Language == 2 ? "" : JourneyLocalization.Language == 1 ? en : fa;
+            JourneyLocalizedText.Write(translateText, value ?? "");
+        }
+        if (boardScore.HasValue && percentText != null && JourneyLocalizedText.Original(percentText) == renderedScore) RenderBoardScore();
     }
     private string lastStatusMessage;
     private string lastRenderedStatus;
@@ -264,6 +320,8 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     private void OnDisable()
     {
         JourneyLocalization.Changed -= RefreshStatusLanguage;
+        JourneyLocalization.Changed -= RefreshTranslation;
+        playTint?.Restore(); recordTint?.Restore();
         ReleasePointers();
         if (voiceService != null)
         {

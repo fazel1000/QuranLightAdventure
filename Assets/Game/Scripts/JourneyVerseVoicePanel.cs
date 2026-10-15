@@ -38,6 +38,12 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     [Header("Optional background music to pause during listening / recording")]
     [SerializeField] private AudioSource backgroundMusic;
 
+    [Header("Praise after a score above the threshold")]
+    [SerializeField, Range(0f, 100f)] private float praiseThreshold = 60f;
+    [SerializeField] private AudioSource praiseSource;
+    [SerializeField] private AudioClip persianPraise, englishPraise, arabicPraise;
+    private Coroutine praiseRoutine;
+    private float? visibleScore;
     [Header("Result - only fired after successful assessment")]
     [SerializeField] private UnityEvent<float> onScoreReady = new UnityEvent<float>();
     public float LastScore { get; private set; }
@@ -57,7 +63,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
         ? (assessmentEngine != null ? assessmentEngine.PreparationStage : "در حال آماده شدن مدل…")
         : !string.IsNullOrEmpty(LastPreparationError) ? "خطای مدل: " + LastPreparationError : "مدل هنوز آماده نیست";
     public bool IsAudioBusy => isActiveAndEnabled && (requestingPermission || assessing ||
-        (recorder != null && recorder.IsRecording) || (verseAudioSource != null && verseAudioSource.isPlaying));
+        (recorder != null && recorder.IsRecording) || (verseAudioSource != null && verseAudioSource.isPlaying) || (praiseSource != null && praiseSource.isPlaying));
     public event Action<float> ScoreEvaluated;
     private float recordingPressDelay;
     private Coroutine recordingRequest;
@@ -108,6 +114,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     public void CancelBoard(JourneyVoiceBoard board)
     {
         if (CurrentBoard != board) return;
+        StopPraise();
         if (recordingRequest != null) StopCoroutine(recordingRequest);
         recordingRequest = null;
         requestingPermission = false;
@@ -181,6 +188,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
 
     public void PlayVerse()
     {
+        StopPraise();
         if (!isActiveAndEnabled || assessing || requestingPermission ||
             (recorder != null && recorder.IsRecording) || verseAudioSource == null || verseAudio == null) return;
         PauseMusic();
@@ -194,6 +202,8 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     {
         if (!isActiveAndEnabled || !ready || preparing || assessing || requestingPermission || recorder == null) return;
         if (recorder.IsRecording) { recorder.Finish(); return; }
+        if (CurrentBoard != null && !CurrentBoard.CanRecord) { SetStatus(JourneyVoiceBoard.LockedMessage); return; }
+        StopPraise();
         recordingRequest = StartCoroutine(RequestAndRecord());
     }
 
@@ -228,6 +238,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
         if (recordingPressDelay > 0f) yield return new WaitForSecondsRealtime(recordingPressDelay);
         requestingPermission = false;
         recordingRequest = null;
+        if (CurrentBoard != null && !CurrentBoard.CanRecord) { SetStatus(JourneyVoiceBoard.LockedMessage); ResumeMusic(); RefreshButtons(); yield break; }
         try
         {
             if (recorder.Begin()) { SetPercent(null); SetStatus("در حال ضبط… برای پایان دوباره بزن"); }
@@ -256,6 +267,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
             SetStatus("بررسی انجام شد");
             ScoreEvaluated?.Invoke(LastScore);
             onScoreReady.Invoke(LastScore);
+            if (LastScore > praiseThreshold) PlayPraise();
         }
         catch (Exception ex)
         {
@@ -299,6 +311,8 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     private string lastStatusMessage;
     private void RefreshStatusLanguage()
     {
+        if (visibleScore.HasValue && percentText != null && (lastStatusMessage == null || lastStatusMessage == "بررسی انجام شد"))
+            JourneyLocalization.WritePercent(percentText, visibleScore.Value);
         if (!string.IsNullOrEmpty(lastStatusMessage)) SetStatus(lastStatusMessage);
     }
     private void SetStatus(string text)
@@ -316,17 +330,39 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     {
         lastStatusMessage = null;
         if (percentText == null) return;
-        string value = score.HasValue ? Mathf.FloorToInt(Mathf.Clamp(score.Value, 0, 100)).ToString() + "٪" : "—";
-        if (usePersianDigits)
-            for (int i = 0; i < 10; i++) value = value.Replace((char)('0' + i), (char)('۰' + i));
+        visibleScore = score;
         ApplyPercentTextSize(score.HasValue ? percentFontSize : statusFontSize);
-        percentText.text = value;
+        if (score.HasValue) JourneyLocalization.WritePercent(percentText, score.Value);
+        else percentText.text = "—";
     }
+
     private void ApplyPercentTextSize(float size)
     {
         if (percentText == null) return;
         percentText.enableAutoSizing = false;
         percentText.fontSize = Mathf.Max(1f, size);
+    }
+    private void PlayPraise()
+    {
+        StopPraise();
+        AudioClip clip = JourneyLocalization.Language == 1 ? englishPraise : JourneyLocalization.Language == 2 ? arabicPraise : persianPraise;
+        if (clip == null) return;
+        if (praiseSource == null) { praiseSource = gameObject.AddComponent<AudioSource>(); praiseSource.playOnAwake = false; praiseSource.spatialBlend = 0f; }
+        PauseMusic();
+        praiseSource.clip = clip; praiseSource.loop = false; praiseSource.Play();
+        praiseRoutine = StartCoroutine(WaitForPraise());
+    }
+    private IEnumerator WaitForPraise()
+    {
+        while (praiseSource != null && praiseSource.isPlaying) yield return null;
+        praiseRoutine = null;
+        if (!IsRecording && !IsPlaying && !requestingPermission) ResumeMusic();
+    }
+    private void StopPraise()
+    {
+        if (praiseRoutine != null) StopCoroutine(praiseRoutine);
+        praiseRoutine = null;
+        if (praiseSource != null) praiseSource.Stop();
     }
     private void PauseMusic()
     {
@@ -334,6 +370,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     }
     private void ResumeMusic()
     {
+        if (praiseSource != null && praiseSource.isPlaying) return;
         if (musicPaused && backgroundMusic != null) backgroundMusic.UnPause();
         musicPaused = false;
     }
@@ -345,6 +382,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     private void OnDisable()
     {
         JourneyLocalization.Changed -= RefreshStatusLanguage;
+        StopPraise();
         generation++;
         StopAllCoroutines();
         requestingPermission = preparing = false;
