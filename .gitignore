@@ -107,3 +107,11 @@ InitTestScene*.unity*
 
 .vscode/
 SceneBackups/
+
+# Local forest assets
+/Assets/Forest_ExpandedNegativeX.asset
+/Assets/Forest_ExpandedNegativeX.asset.meta
+/Assets/CenteredForest_WithVegetation.asset
+/Assets/CenteredForest_WithVegetation.asset.meta
+/Assets/CenteredForest_Test.asset
+/Assets/CenteredForest_Test.asset.meta

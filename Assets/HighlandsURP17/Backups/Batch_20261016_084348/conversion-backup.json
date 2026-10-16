@@ -1,0 +1,94 @@
+{
+    "entries": [
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Bag.mat",
+            "originalGuid": "3babb7d45e8ce234d83fdc602996ee14",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Bag.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Barrel.mat",
+            "originalGuid": "b6b3bab5790a145429015960bd75b379",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Barrel.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Box.mat",
+            "originalGuid": "47ce525740d10374fb25923cd26d9eb1",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Box.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Cart.mat",
+            "originalGuid": "98aa2e6b276d63644a7b1a63b9258dda",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Cart.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Chest.mat",
+            "originalGuid": "d67789d8d32f9654dbcea7db99b0bd28",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Chest.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Dishes.mat",
+            "originalGuid": "d453897783ba83a48961ff17e2c52c07",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Dishes.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Dryer.mat",
+            "originalGuid": "0bd823882b27ee64899a6040aa63b7e6",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Dryer.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Food.mat",
+            "originalGuid": "3964cd9c6ce05154bbc6d21b40df6622",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Food.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Gold.mat",
+            "originalGuid": "e343b2cf5333a5b419b3a28b1455c3d8",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Gold.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Log.mat",
+            "originalGuid": "6fef00e80d4c3d741b9507afaf047dec",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Log.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Table.mat",
+            "originalGuid": "9119cceaa60a72b45860ea15e9da972a",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Table.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Tent_1.mat",
+            "originalGuid": "45f34af5c2430774887cddf4c225668c",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Tent_1.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Tent_2.mat",
+            "originalGuid": "1244cfe82b7a29b498ef271c0fecd29a",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Tent_2.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Tent_3_4.mat",
+            "originalGuid": "fc2cd876864c49447bd024350ff9c2b5",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Tent_3_4.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Camp/Weapon.mat",
+            "originalGuid": "a288b2afea684914081029aeb938b936",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084348/Weapon.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        }
+    ]
+}

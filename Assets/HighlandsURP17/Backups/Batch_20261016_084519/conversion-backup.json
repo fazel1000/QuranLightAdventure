@@ -1,0 +1,52 @@
+{
+    "entries": [
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Mountains/Mountain_1.mat",
+            "originalGuid": "0ab2db07ec5191e4499d625d3a11f77f",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084519/Mountain_1.mat",
+            "convertedShader": "Raygeas/Highlands URP/Background Objects"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Mountains/Mountain_2.mat",
+            "originalGuid": "4aa986f82271b8645a2eebaf61bc8897",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084519/Mountain_2.mat",
+            "convertedShader": "Raygeas/Highlands URP/Background Objects"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Mountains/Mountain_3.mat",
+            "originalGuid": "94a488982bdde454882ef74b1c296282",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084519/Mountain_3.mat",
+            "convertedShader": "Raygeas/Highlands URP/Background Objects"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Mountains/Mountain_4.mat",
+            "originalGuid": "c0cf4ada5369a934894906c4b9540846",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084519/Mountain_4.mat",
+            "convertedShader": "Raygeas/Highlands URP/Background Objects"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Witches House/Fences.mat",
+            "originalGuid": "3f88c43e2881cd743abe4f4205fbff86",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084519/Fences.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Witches House/Furniture.mat",
+            "originalGuid": "487d7267f146b8d49bb4e53f0e9a2c48",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084519/Furniture.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Witches House/House.mat",
+            "originalGuid": "5890dc85f046dd0408755d6871e1a525",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084519/House.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Witches House/Props.mat",
+            "originalGuid": "b53658c2b35444d4998f0fc8860a8aa0",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084519/Props.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        }
+    ]
+}

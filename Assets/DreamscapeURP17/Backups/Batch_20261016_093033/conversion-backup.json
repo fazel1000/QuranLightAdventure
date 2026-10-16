@@ -1,0 +1,46 @@
+{
+    "entries": [
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Foliage/M_Bushes_Tiling_01.mat",
+            "originalGuid": "da6b51958c17d6e49a7354c1605d1914",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093033/M_Bushes_Tiling_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Masked Lit"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Foliage/M_Flower_01.mat",
+            "originalGuid": "108c1fb557f56084c8b156a644c50290",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093033/M_Flower_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Simple Foliage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Foliage/M_Flower_02.mat",
+            "originalGuid": "aa67d2b38f658904e95a82b9deaad7de",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093033/M_Flower_02.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Simple Foliage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Foliage/M_Flower_Field_01.mat",
+            "originalGuid": "873199299e491624aadecb1c47631645",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093033/M_Flower_Field_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Simple Foliage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Foliage/M_Flower_Field_02.mat",
+            "originalGuid": "9a79c25c9b159654981876ee956ef5cf",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093033/M_Flower_Field_02.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Simple Foliage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Foliage/M_Grass_Advanced.mat",
+            "originalGuid": "ecbaa5667e5070a449fa7af51ec5f97d",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093033/M_Grass_Advanced.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Grass"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Foliage/M_Mushrooms.mat",
+            "originalGuid": "40a0c2b2c1ffbaf45930f6b0c7c5158c",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093033/M_Mushrooms.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Grass"
+        }
+    ]
+}

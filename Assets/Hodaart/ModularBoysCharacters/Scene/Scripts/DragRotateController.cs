@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 
-namespace ModularBoysCharacters
+namespace StylizedcharacterCollection1
 {
     public class DragRotateController : MonoBehaviour,
         IPointerDownHandler, IDragHandler, IPointerUpHandler

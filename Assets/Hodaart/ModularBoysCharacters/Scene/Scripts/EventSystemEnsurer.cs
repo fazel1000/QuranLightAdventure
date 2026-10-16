@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 #endif
 
-namespace ModularBoysCharacters
+namespace StylizedcharacterCollection1
 {
     [DisallowMultipleComponent]
     public class EventSystemEnsurer : MonoBehaviour

@@ -1,0 +1,142 @@
+{
+    "entries": [
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Ash.mat",
+            "originalGuid": "293677401a21b2a44bbf3fa63b5b3587",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Ash.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Barrel.mat",
+            "originalGuid": "850a187fb5a70ee42b08881c0da7e43b",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Barrel.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Bench.mat",
+            "originalGuid": "4b88ea9ddeeabf84d924091fde741fa3",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Bench.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Campsite_Rocks_Unity.mat",
+            "originalGuid": "a1a6cfd28ac74be43863deae20494c72",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Campsite_Rocks_Unity.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Cap.mat",
+            "originalGuid": "fb6f5c836f0c2904080e2f2ae3ce5dd6",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Cap.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Crate.mat",
+            "originalGuid": "ccb96181f18d24045a3f15345fafbdeb",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Crate.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Docks.mat",
+            "originalGuid": "17bc726a9663b5c44b3b3076154eaaa3",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Docks.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Fence_01.mat",
+            "originalGuid": "d61fad7402b523a4e9af749f8c648602",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Fence_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Fence_02.mat",
+            "originalGuid": "c25974af07bf16945bc5250f91549602",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Fence_02.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Fence_03.mat",
+            "originalGuid": "33272793e2126554d9bb38d45ca28945",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Fence_03.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Firewood.mat",
+            "originalGuid": "131a70dfece960a4db25f459a95d0114",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Firewood.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Potion_01.mat",
+            "originalGuid": "3bef8b67622da9144971651a4aeef1a7",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Potion_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Pots.mat",
+            "originalGuid": "454bce52b96cb544d90074d4302a6044",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Pots.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Sack_01.mat",
+            "originalGuid": "2331d1f6c8402cd4197991f038d71700",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Sack_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_SleepingBag_01.mat",
+            "originalGuid": "43efaec7f2854a44eb4e583caec484c2",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_SleepingBag_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_SleepingBag_02.mat",
+            "originalGuid": "d49c7affab0e8ab408e60da2d30a809f",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_SleepingBag_02.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Sticks.mat",
+            "originalGuid": "4fbfc69b6ebb16a42ab787f8cc236bfe",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Sticks.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_Tent.mat",
+            "originalGuid": "7be7da06d04e9634a9be88817ddc4c1d",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_Tent.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_TreeFallen.mat",
+            "originalGuid": "e582e7f5a77c84b46942aaa29ae93c5e",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_TreeFallen.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_TreeFallen_Cover.mat",
+            "originalGuid": "f23ca8558b6078f4087e4f7cffbc93fa",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_TreeFallen_Cover.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface Coverage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_TreeStump.mat",
+            "originalGuid": "b669c5f62050c6048b7fb4e2e90f53ad",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_TreeStump.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_TreeStump_Cover.mat",
+            "originalGuid": "714b16584915f5648b15a6c191bc5dc0",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_TreeStump_Cover.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface Coverage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Props/M_WoodSign.mat",
+            "originalGuid": "1508bff0f76b88f4383337841f936260",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_092605/M_WoodSign.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        }
+    ]
+}

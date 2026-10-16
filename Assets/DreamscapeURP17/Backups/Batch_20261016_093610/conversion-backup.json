@@ -1,0 +1,16 @@
+{
+    "entries": [
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Terrain/M_Terrain_01.mat",
+            "originalGuid": "1edc96039e5c0ee4aa5e16ca5c15fda3",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093610/M_Terrain_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/World Aligned Blend"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Terrain/M_Terrain_02.mat",
+            "originalGuid": "7c8541317a9e37f44a1a90797fd27b80",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093610/M_Terrain_02.mat",
+            "convertedShader": "Polyart/Dreamscape URP/World Aligned Blend"
+        }
+    ]
+}

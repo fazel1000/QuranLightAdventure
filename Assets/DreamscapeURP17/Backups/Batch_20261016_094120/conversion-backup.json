@@ -1,0 +1,40 @@
+{
+    "entries": [
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Water/M_Dreamscape_Water.mat",
+            "originalGuid": "7d1acad33a2a9764a9b033eaac53d925",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_094120/M_Dreamscape_Water.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Water"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Water/M_Dreamscape_WaterRiver.mat",
+            "originalGuid": "5086febe6a8c64841b4d2602dbccde40",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_094120/M_Dreamscape_WaterRiver.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Water River"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Water/M_Dreamscape_Waterfall.mat",
+            "originalGuid": "a8643c41ab4c93241a07490553b3cf17",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_094120/M_Dreamscape_Waterfall.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Waterfall"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Water/M_WaterfallFoam.mat",
+            "originalGuid": "472a46a702f43e048ade032816cea39b",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_094120/M_WaterfallFoam.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Waterfall Foam"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Water/M_WaterfallFoam_Variation.mat",
+            "originalGuid": "ccd82cc8f742b944ea3e19b787bc8b33",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_094120/M_WaterfallFoam_Variation.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Waterfall Foam"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Water/M_WaterfallFoam_Volumetric.mat",
+            "originalGuid": "47597ed9ebcf31945b5fa50faa340cdd",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_094120/M_WaterfallFoam_Volumetric.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Waterfall Foam Volumetric"
+        }
+    ]
+}

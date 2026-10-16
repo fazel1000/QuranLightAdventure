@@ -1,0 +1,94 @@
+{
+    "entries": [
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_Birch_01_BB.mat",
+            "originalGuid": "4d6b194cf90bd53419f226f021f2cb54",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_Birch_01_BB.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage Billboard"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_Birch_02_BB.mat",
+            "originalGuid": "7759d79aeab5b9b4588d6fc3dd2b746e",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_Birch_02_BB.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage Billboard"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_Birch_03_BB.mat",
+            "originalGuid": "f6b6d5c9aa31f4c43a75daf214887ad8",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_Birch_03_BB.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage Billboard"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_Birch_04_BB.mat",
+            "originalGuid": "eb9f6bc5ec23b3242a8e3cf36f626c59",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_Birch_04_BB.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage Billboard"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_Birch_05_BB.mat",
+            "originalGuid": "4de232bcb20b33e4b84182ceada95630",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_Birch_05_BB.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage Billboard"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_Bush_Bark.mat",
+            "originalGuid": "0691ce41ee2aa324c8b80bdd551807ea",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_Bush_Bark.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface Coverage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_TreeBirch_Bark.mat",
+            "originalGuid": "351c6850aa5620944bc0d683179b15d4",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_TreeBirch_Bark.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_TreeBirch_Leaves.mat",
+            "originalGuid": "80bac2b3309d3d34c85971907111c725",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_TreeBirch_Leaves.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_TreeBirch_Leaves_Red.mat",
+            "originalGuid": "f07e7b29a5520b940bfcc4528607dac3",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_TreeBirch_Leaves_Red.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_TreeLarge_BB_01.mat",
+            "originalGuid": "b253e55cdc2b7c245821e1396a8d48aa",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_TreeLarge_BB_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage Billboard"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_TreeLarge_BB_02.mat",
+            "originalGuid": "5185a21e6f765834b86b655b45076074",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_TreeLarge_BB_02.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage Billboard"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_TreeLarge_BB_03.mat",
+            "originalGuid": "776a569a571f1c4449f127a7c1331c45",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_TreeLarge_BB_03.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage Billboard"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_TreeLarge_BB_04.mat",
+            "originalGuid": "88cfddc17383cb44aad84c99d0993481",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_TreeLarge_BB_04.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage Billboard"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_TreeLarge_Bark.mat",
+            "originalGuid": "4863f36fbf7fbe740b49709e27b56f6e",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_TreeLarge_Bark.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface Coverage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Trees/M_TreeLarge_Leaves.mat",
+            "originalGuid": "256a7f8f4f010c545bf70c9bee77efde",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093703/M_TreeLarge_Leaves.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Foliage"
+        }
+    ]
+}

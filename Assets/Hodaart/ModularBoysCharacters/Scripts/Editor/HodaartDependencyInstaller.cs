@@ -4,7 +4,7 @@ using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
 using UnityEngine;
 
-namespace Hodaart.ModularBoysCharacters.Editor
+namespace Hodaart.StylizedcharacterCollection1.Editor
 {
     /// <summary>
     /// Automatically installs com.unity.inputsystem when this package is imported,

@@ -1,0 +1,70 @@
+{
+    "entries": [
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_RockFormation_01.mat",
+            "originalGuid": "8dd3d5d4200d56c4db3dc79b53d459cd",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_RockFormation_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface Coverage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_RockFormation_02.mat",
+            "originalGuid": "465f70d5ff5ad5e45949120c7fc9c75c",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_RockFormation_02.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface Coverage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_RockFormation_03.mat",
+            "originalGuid": "fa68cd243dfb20144a0c7e6d5f371d83",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_RockFormation_03.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface Coverage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_RockFormation_04.mat",
+            "originalGuid": "130969766deb1e949a59c401da77b8cb",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_RockFormation_04.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface Coverage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_Rocks_Group.mat",
+            "originalGuid": "0253e72aa799a5b4390ad67e84de6fda",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_Rocks_Group.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_Rocks_Rune_01.mat",
+            "originalGuid": "443609c1a1fe7764393a3d2821622e7f",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_Rocks_Rune_01.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_Rocks_Rune_02.mat",
+            "originalGuid": "3eeeb2782ffb9bb4a8e6d4ef714e4a1f",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_Rocks_Rune_02.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_RoundedRocks.mat",
+            "originalGuid": "13fa24508b4eb324491e0eab64403767",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_RoundedRocks.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_RoundedRocks_Coverage.mat",
+            "originalGuid": "f0a9fce9abd837a4384e6038a7dd3698",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_RoundedRocks_Coverage.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface Coverage"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_SmallRocks_Sand.mat",
+            "originalGuid": "de3daa9e24e095d41af0b4554cad6f2c",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_SmallRocks_Sand.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface World Aligned"
+        },
+        {
+            "originalPath": "Assets/Polyart/PolyartStudio/DreamscapeMeadows/Materials/Rocks/M_SmallRocks_Stone.mat",
+            "originalGuid": "debf8cb3bef81ad42ba7e28d0796633f",
+            "backupPath": "Assets/DreamscapeURP17/Backups/Batch_20261016_093345/M_SmallRocks_Stone.mat",
+            "convertedShader": "Polyart/Dreamscape URP/Surface World Aligned"
+        }
+    ]
+}

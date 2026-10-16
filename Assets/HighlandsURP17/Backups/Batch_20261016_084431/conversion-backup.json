@@ -1,0 +1,106 @@
+{
+    "entries": [
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Bush.mat",
+            "originalGuid": "be211544f6b894d43ad8b4424a24034a",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Bush.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Clovers.mat",
+            "originalGuid": "83cba273fa549a14ea4c51c5fb3f454b",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Clovers.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Dead_Bush_Bark.mat",
+            "originalGuid": "71bff8b4531fa1248b3d1192bff507fa",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Dead_Bush_Bark.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Fern.mat",
+            "originalGuid": "b32bc720c1ef1704cbbbc474501b34d6",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Fern.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Fir_Bark.mat",
+            "originalGuid": "1e3a5c0f4bf78bb428fc8d87d2d383c2",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Fir_Bark.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Fir_Branch.mat",
+            "originalGuid": "497a6728df998d44bac3f3376ceb03fb",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Fir_Branch.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Fir_Branch_2.mat",
+            "originalGuid": "220d1a80aa018bb4c8e445d5a51b69ca",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Fir_Branch_2.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Flower_1.mat",
+            "originalGuid": "d9b4daaeaf71b934bb9f134f373792f2",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Flower_1.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Grass_1.mat",
+            "originalGuid": "3805f20af5803d04db6fa559a7a079fe",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Grass_1.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Grass_2.mat",
+            "originalGuid": "77acc4cda6368ce4990c66054a097583",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Grass_2.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Logs.mat",
+            "originalGuid": "1f351f80c81ccf64e84d21868af3864f",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Logs.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Mushrooms_Flowers.mat",
+            "originalGuid": "3a308754e318f8141b82cc1d0e126ccf",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Mushrooms_Flowers.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Stones_Rocks(Grass).mat",
+            "originalGuid": "35a784c4327446346abf4905d46c65de",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Stones_Rocks(Grass).mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Stones_Rocks.mat",
+            "originalGuid": "48235a3bec1ffac42b238feb64e16aba",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Stones_Rocks.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Stumps.mat",
+            "originalGuid": "6206f939b9a7dc040a186ae82094e058",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Stumps.mat",
+            "convertedShader": "Raygeas/Highlands URP/Surface"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Tall_Fir_Branch.mat",
+            "originalGuid": "5d6cb861c78e2464c9ad921d2a24b318",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Tall_Fir_Branch.mat",
+            "convertedShader": "Raygeas/Highlands URP/Foliage"
+        },
+        {
+            "originalPath": "Assets/HIGHLANDS - Stylized Environment/Materials/Forest/Water.mat",
+            "originalGuid": "adea0dedcb58e2e4590575eeabbfd486",
+            "backupPath": "Assets/HighlandsURP17/Backups/Batch_20261016_084431/Water.mat",
+            "convertedShader": "Raygeas/Highlands URP/Water"
+        }
+    ]
+}
