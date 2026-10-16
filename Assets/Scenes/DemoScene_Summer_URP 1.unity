@@ -37375,6 +37375,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Sword 03 Purple
       objectReference: {fileID: 0}
+    - target: {fileID: 6915069819932414172, guid: fe5192210653c144c86cb70a31330444, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8686978073325519521, guid: fe5192210653c144c86cb70a31330444, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.6999996
@@ -51058,7 +51062,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2450352533134845170, guid: 038c09d4f6abbc44fa76337fb78d54de, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
