@@ -6,8 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/TriForge Assets/Fantasy Forest Environment/Scenes/URP/DemoScene_Summer_URP
-      1.unity
+    path: Assets/Scenes/DemoScene_Summer_URP 1.unity
     guid: 97839248445dc5e4a89192e5a8d09872
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
