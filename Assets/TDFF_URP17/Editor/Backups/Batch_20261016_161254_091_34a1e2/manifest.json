@@ -1,0 +1,67 @@
+{
+    "unityVersion": "6000.0.58f2",
+    "createdUtc": "2026-10-16T16:12:54.5169635Z",
+    "status": "converted",
+    "entries": [
+        {
+            "originalGuid": "b970cc230b37fc242a55c58831261c30",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_Bush_Set.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/00_M_tdFF_Bush_Set.mat",
+            "targetShader": "TDFF URP17/Standard Cull Off"
+        },
+        {
+            "originalGuid": "3959f89f62c853546b7b6d2868d3e121",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_Grass_Tall.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/01_M_tdFF_Grass_Tall.mat",
+            "targetShader": "TDFF URP17/Vegetation Compatibility"
+        },
+        {
+            "originalGuid": "b1efc50e4fd52364f8fc7a32c58a7de6",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_Spruce_Branch.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/02_M_tdFF_Spruce_Branch.mat",
+            "targetShader": "TDFF URP17/Vegetation Compatibility"
+        },
+        {
+            "originalGuid": "2da579371d53f9b44a77c50ca20a184b",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_Spruce_Trunk.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/03_M_tdFF_Spruce_Trunk.mat",
+            "targetShader": "TDFF URP17/Vegetation Compatibility"
+        },
+        {
+            "originalGuid": "6d5ec90acd783fe4788109f04f313817",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_Water.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/04_M_tdFF_Water.mat",
+            "targetShader": "TDFF URP17/Simple Water"
+        },
+        {
+            "originalGuid": "61665be5a1df91d43a8243a57000adc2",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_WaterFountain.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/05_M_tdFF_WaterFountain.mat",
+            "targetShader": "TDFF URP17/Simple Water"
+        },
+        {
+            "originalGuid": "56a78711874b04942b59df3027c01e42",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_WaterFountain_2.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/06_M_tdFF_WaterFountain_2.mat",
+            "targetShader": "TDFF URP17/Simple Water"
+        },
+        {
+            "originalGuid": "7b2c0ea471ad5f2409cccb404965d7b7",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_WaterFountain_3.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/07_M_tdFF_WaterFountain_3.mat",
+            "targetShader": "TDFF URP17/Simple Water"
+        },
+        {
+            "originalGuid": "2b0c9763550e4344aafc450df95565f8",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_WaterFountain_4.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/08_M_tdFF_WaterFountain_4.mat",
+            "targetShader": "TDFF URP17/Simple Water"
+        },
+        {
+            "originalGuid": "89463ded4dbc163489c4a6ebdedfee9c",
+            "originalPath": "Assets/TriForge Assets/Top Down - Fantasy Forest/Materials/M_tdFF_billboard_lod.mat",
+            "backupPath": "Assets/TDFF_URP17/Editor/Backups/Batch_20261016_161254_091_34a1e2/09_M_tdFF_billboard_lod.mat",
+            "targetShader": "TDFF URP17/Tree LOD"
+        }
+    ]
+}

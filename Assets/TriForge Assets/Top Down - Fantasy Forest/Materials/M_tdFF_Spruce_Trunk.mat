@@ -8,19 +8,17 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: M_tdFF_Spruce_Trunk
-  m_Shader: {fileID: 4800000, guid: ea001a2ead151434690a5ea05c3eaceb, type: 3}
+  m_Shader: {fileID: 4800000, guid: 6f0b7041ceca95e4e82794b0f149b44b, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
-  - _GRADIENTUV_UV2
-  m_InvalidKeywords:
-  - _METALLICGLOSSMAP
-  - _NORMALMAP
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
+  m_CustomRenderQueue: 2000
+  stringTagMap:
+    RenderType: Opaque
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -125,6 +123,11 @@ Material:
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
+    - _TDAlphaClip: 0
+    - _TDCull: 2
+    - _TDUseMask: 0
+    - _TDWind: 0
+    - _TDWindUV2: 1
     - _TopBrightness: 1
     - _UVSec: 0
     - _UseColorVariance: 0
