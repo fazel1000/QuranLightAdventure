@@ -18680,7 +18680,7 @@ MonoBehaviour:
   firstPersianButton: {fileID: 1993270847}
   firstEnglishButton: {fileID: 599676460}
   firstArabicButton: {fileID: 882668122}
-  alwaysShowFirstPanel: 0
+  alwaysShowFirstPanel: 1
   player: {fileID: 445630433}
   startPoint: {fileID: 1164083835}
   persianButton: {fileID: 938204975}
@@ -59507,6 +59507,10 @@ MonoBehaviour:
   target: {fileID: 6635659793598088400}
   previewCamera: {fileID: 2100974684}
   degreesPerScreenWidth: 360
+  degreesPerScreenHeight: 180
+  limitVerticalRotation: 1
+  minimumPitch: -70
+  maximumPitch: 70
 --- !u!114 &722124327
 MonoBehaviour:
   m_ObjectHideFlags: 0
