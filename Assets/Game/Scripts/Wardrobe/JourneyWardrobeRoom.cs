@@ -44,36 +44,56 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
         if (stageRoot != null) stageRoot.SetActive(false);
         if (previewCamera != null) previewCamera.enabled = false;
         yield return null; // Game Creator kernel must finish startup before ChangeModel.
-        if (!useHodaartForPlayer || player == null || gameplayModelPrefab == null) yield break;
-        Animator model = gameplayModelPrefab.GetComponentInChildren<Animator>(true);
+        if (useHodaartForPlayer) TryChangeGameplayModel(gameplayModelPrefab, true);
+    }
+    // Replace the visual model while retaining gameplay animation and equipment.
+    public bool TryChangeGameplayModel(GameObject prefab, bool editableOutfit)
+    {
+        if (player == null || prefab == null) return false;
+        Animator model = prefab.GetComponentInChildren<Animator>(true);
         if (model == null || model.avatar == null || !model.avatar.isValid || !model.avatar.isHuman)
-        { Debug.LogError("Hodaart gameplay prefab requires a valid Humanoid Avatar. Existing player model was kept.", this); yield break; }
-        RuntimeAnimatorController controller = gameplayAnimatorController != null ? gameplayAnimatorController :
-            player.Animim.Animator != null ? player.Animim.Animator.runtimeAnimatorController : null;
-        if (controller == null) { Debug.LogError("Assign the Game Creator gameplay animator controller; existing model was kept.", this); yield break; }
+        { Debug.LogError("Gameplay model requires a valid Humanoid Avatar. Existing player model was kept.", this); return false; }
         Animator oldAnimator = player.Animim.Animator;
+        bool gameplayRootMotion = oldAnimator != null && oldAnimator.applyRootMotion;
+        RuntimeAnimatorController controller = gameplayAnimatorController != null ? gameplayAnimatorController :
+            oldAnimator != null ? oldAnimator.runtimeAnimatorController : null;
+        if (controller == null) { Debug.LogError("Assign the Game Creator gameplay animator controller; existing model was kept.", this); return false; }
         if (combat == null) combat = player.GetComponent<JourneyPlayerCombat>();
         if (stoneController == null) stoneController = FindFirstObjectByType<JourneyStoneThrowController>(FindObjectsInactive.Include);
+        if (stoneController != null) stoneController.CancelForRespawn();
         KeepAttachments(oldAnimator);
-        GameObject instance = player.ChangeModel(gameplayModelPrefab, new Character.ChangeOptions { controller = controller, offset = modelOffset });
-        if (instance != null) foreach (var child in instance.GetComponentsInChildren<Transform>(true)) child.gameObject.layer = player.gameObject.layer;
-        if (instance != null && instance.GetComponent<JourneyWardrobeAppearance>() == null) instance.AddComponent<JourneyWardrobeAppearance>();
+        GameObject instance = player.ChangeModel(prefab, new Character.ChangeOptions { controller = controller, offset = modelOffset });
+        if (instance == null) { RestoreAttachments(oldAnimator); return false; }
+        foreach (var child in instance.GetComponentsInChildren<Transform>(true)) child.gameObject.layer = player.gameObject.layer;
+        if (editableOutfit && instance.GetComponent<JourneyWardrobeAppearance>() == null)
+            instance.AddComponent<JourneyWardrobeAppearance>();
+        if (!editableOutfit)
+            foreach (var appearance in instance.GetComponentsInChildren<JourneyWardrobeAppearance>(true)) appearance.enabled = false;
         Animator newAnimator = player.Animim.Animator;
         if (newAnimator != null)
         {
             newAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-            foreach (var attachment in attachments)
-            {
-                if (attachment.item == null) continue;
-                Transform bone = newAnimator.GetBoneTransform(attachment.bone);
-                if (bone == null) { Debug.LogWarning("Missing equipment bone: " + attachment.bone, this); continue; }
-                attachment.item.SetParent(bone, false);
-                attachment.item.localPosition = attachment.position; attachment.item.localRotation = attachment.rotation; attachment.item.localScale = attachment.scale;
-            }
+            newAnimator.applyRootMotion = gameplayRootMotion;
+            RestoreAttachments(newAnimator);
             if (combat != null) combat.playerAnimator = newAnimator;
             if (stoneController != null) stoneController.RebindCharacterAnimator(newAnimator);
         }
-        // Colliders and Character belong to the original player root, not the new visual model.
+        return true;
+    }
+    private void RestoreAttachments(Animator animator)
+    {
+        if (animator == null || !animator.isHuman) return;
+        foreach (var attachment in attachments)
+        {
+            if (attachment.item == null) continue;
+            Transform bone = animator.GetBoneTransform(attachment.bone);
+            if (bone == null) { Debug.LogWarning("Missing equipment bone: " + attachment.bone + "; item retained under Player.", this); continue; }
+            attachment.item.SetParent(bone, false);
+            attachment.item.localPosition = attachment.position;
+            attachment.item.localRotation = attachment.rotation;
+            attachment.item.localScale = attachment.scale;
+        }
+        attachments.Clear();
     }
     private void KeepAttachments(Animator animator)
     {
@@ -83,13 +103,26 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
         if (stoneController != null) { candidates.Add(stoneController.HandSocket); candidates.Add(stoneController.ThrowOrigin); }
         if (combat != null && combat.shieldHitbox != null) candidates.Add(combat.shieldHitbox.transform);
         if (extraAttachments != null) candidates.AddRange(extraAttachments);
-        // Preserve rigid sword/shield renderers, including a parent containing their hitbox.
+        // Preserve rigid equipment by its bone attachment, not its asset name.
+        // Imported skinned body/clothes are intentionally not candidates.
+        var humanBones = new HashSet<Transform>();
+        for (int i = 0; i < (int)HumanBodyBones.LastBone; i++)
+        {
+            Transform bone = animator.GetBoneTransform((HumanBodyBones)i);
+            if (bone != null) humanBones.Add(bone);
+        }
         foreach (var mesh in animator.GetComponentsInChildren<MeshRenderer>(true))
-            if (mesh.name.IndexOf("sword", StringComparison.OrdinalIgnoreCase) >= 0 || mesh.name.IndexOf("shield", StringComparison.OrdinalIgnoreCase) >= 0)
-                candidates.Add(mesh.transform);
+        {
+            Transform item = mesh.transform;
+            if (humanBones.Contains(item)) continue;
+            Transform ancestor = item.parent;
+            while (ancestor != null && ancestor != animator.transform && !humanBones.Contains(ancestor))
+            { item = ancestor; ancestor = ancestor.parent; }
+            if (ancestor != null && humanBones.Contains(ancestor)) candidates.Add(item);
+        }
         foreach (var item in candidates)
         {
-            if (item == null || !item.IsChildOf(animator.transform)) continue;
+            if (item == null || humanBones.Contains(item) || !item.IsChildOf(animator.transform)) continue;
             bool covered = false;
             foreach (var other in candidates) if (other != null && other != item && item.IsChildOf(other)) { covered = true; break; }
             if (covered || attachments.Exists(a => a.item == item)) continue;
@@ -119,7 +152,11 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
         wardrobePanel.SetActive(true);
         wardrobePanel.transform.SetAsLastSibling();
         var drag = wardrobePanel.GetComponent<JourneyWardrobeDrag>();
-        if (drag != null) { drag.target = preview.transform; drag.previewCamera = previewCamera; }
+        if (drag != null)
+        {
+            drag.target = preview.transform;
+            drag.previewCamera = previewCamera;
+        }
         HideOtherUI();
         open = true;
     }
@@ -176,7 +213,7 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
         }
         hiddenUI.Clear();
     }
-    private void FitPreviewCamera()
+    public void FitPreviewCamera()
     {
         Bounds bounds = new Bounds(preview.transform.position + Vector3.up, Vector3.zero);
         bool found = false;
