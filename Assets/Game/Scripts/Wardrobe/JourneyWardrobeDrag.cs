@@ -7,6 +7,7 @@ public sealed class JourneyWardrobeDrag : MonoBehaviour, IPointerDownHandler, IP
 {
     public Transform target;
     public Camera previewCamera;
+    public RectTransform previewArea;
     [Min(1f)] public float degreesPerScreenWidth = 360f;
     [Min(1f)] public float degreesPerScreenHeight = 180f;
     [Tooltip("Off allows full vertical turns as well as horizontal turns. On keeps the camera upright within the pitch limits.")]
@@ -17,13 +18,24 @@ public sealed class JourneyWardrobeDrag : MonoBehaviour, IPointerDownHandler, IP
     private Vector3 pivot;
     private float distance, yaw, pitch;
     private Quaternion orbitRotation;
+    private Rect screenRect;
 
     public void OnPointerDown(PointerEventData e)
     {
         if (pointer != int.MinValue || e.button != PointerEventData.InputButton.Left || target == null || previewCamera == null) return;
         GameObject hit = e.pointerCurrentRaycast.gameObject;
         if (hit != null && hit.GetComponentInParent<Selectable>() != null) return;
-        if (!previewCamera.pixelRect.Contains(e.position)) return;
+        screenRect = previewCamera.pixelRect;
+        if (previewArea != null)
+        {
+            Canvas canvas = previewArea.GetComponentInParent<Canvas>();
+            Camera eventCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+            var corners = new Vector3[4]; previewArea.GetWorldCorners(corners);
+            Vector2 a = RectTransformUtility.WorldToScreenPoint(eventCamera, corners[0]);
+            Vector2 b = RectTransformUtility.WorldToScreenPoint(eventCamera, corners[2]);
+            screenRect = Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
+        }
+        if (!screenRect.Contains(e.position)) return;
         // Use the visible body's center, rather than the feet at the model's transform origin.
         Bounds bounds = new Bounds(target.position, Vector3.zero);
         bool found = false;
@@ -44,8 +56,8 @@ public sealed class JourneyWardrobeDrag : MonoBehaviour, IPointerDownHandler, IP
     public void OnDrag(PointerEventData e)
     {
         if (e.pointerId != pointer || target == null || previewCamera == null) return;
-        float horizontal = -e.delta.x * degreesPerScreenWidth / Mathf.Max(1f, previewCamera.pixelRect.width);
-        float vertical = e.delta.y * degreesPerScreenHeight / Mathf.Max(1f, previewCamera.pixelRect.height);
+        float horizontal = -e.delta.x * degreesPerScreenWidth / Mathf.Max(1f, screenRect.width);
+        float vertical = e.delta.y * degreesPerScreenHeight / Mathf.Max(1f, screenRect.height);
         if (limitVerticalRotation)
         {
             yaw = Mathf.Repeat(yaw + horizontal, 360f);

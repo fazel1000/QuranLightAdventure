@@ -12,12 +12,20 @@ public sealed class JourneyChargedJump : MonoBehaviour, IPointerDownHandler, IPo
     [Range(0.05f, 1.5f)] public float minimumHeight = 0.3f;
     [Range(0.05f, 1.5f)] public float maximumHeight = 1.5f;
     [Min(0.1f)] public float fullChargeSeconds = 0.8f;
+    public bool hideWhenUnavailable = true;
+    private CanvasGroup visibility;
+    private float originalAlpha;
+    private bool originalInteractable, originalBlocks;
     private int pointer = int.MinValue;
     private float began, takeoffY, height, jumpTime;
     private bool jumping, leftGround;
     public float Charge01 => pointer == int.MinValue ? 0f : Mathf.Clamp01((Time.unscaledTime - began) / Mathf.Max(0.1f, fullChargeSeconds));
     private void Awake()
     {
+        visibility = GetComponent<CanvasGroup>();
+        if (visibility == null && hideWhenUnavailable) visibility = gameObject.AddComponent<CanvasGroup>();
+        if (visibility != null)
+        { originalAlpha = visibility.alpha; originalInteractable = visibility.interactable; originalBlocks = visibility.blocksRaycasts; }
         if (player == null) foreach (var c in FindObjectsByType<Character>(FindObjectsSortMode.None)) if (c.IsPlayer) { player = c; break; }
         if (menu == null) menu = FindFirstObjectByType<JourneyMenuController>();
         if (vehicle == null) vehicle = FindFirstObjectByType<JourneyVehicleDriver>();
@@ -46,7 +54,13 @@ public sealed class JourneyChargedJump : MonoBehaviour, IPointerDownHandler, IPo
         jumping = true; leftGround = false;
     }
     public void OnPointerExit(PointerEventData e) { if (pointer == e.pointerId) pointer = int.MinValue; }
-    private void Update() { if (!Allowed) pointer = int.MinValue; }
+    private void Update()
+    {
+        bool allowed = Allowed;
+        if (!allowed) pointer = int.MinValue;
+        if (hideWhenUnavailable && visibility != null)
+        { visibility.alpha = allowed ? originalAlpha : 0f; visibility.interactable = allowed && originalInteractable; visibility.blocksRaycasts = allowed && originalBlocks; }
+    }
     private void LateUpdate()
     {
         if (!jumping || player == null || player.Driver == null) return;
@@ -61,5 +75,10 @@ public sealed class JourneyChargedJump : MonoBehaviour, IPointerDownHandler, IPo
     }
     private void OnApplicationFocus(bool focus) { if (!focus) pointer = int.MinValue; }
     private void OnApplicationPause(bool paused) { if (paused) pointer = int.MinValue; }
-    private void OnDisable() { pointer = int.MinValue; }
+    private void OnDisable()
+    {
+        pointer = int.MinValue;
+        if (visibility != null)
+        { visibility.alpha = originalAlpha; visibility.interactable = originalInteractable; visibility.blocksRaycasts = originalBlocks; }
+    }
 }

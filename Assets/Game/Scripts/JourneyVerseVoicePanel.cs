@@ -341,6 +341,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
         if (percentText == null) return;
         percentText.enableAutoSizing = false;
         percentText.fontSize = Mathf.Max(1f, size);
+        JourneyLanguageTextStyle.ApplyTo(percentText, false, size);
     }
     private void PlayPraise()
     {

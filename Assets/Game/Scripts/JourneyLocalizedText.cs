@@ -37,6 +37,7 @@ public sealed class JourneyLocalizedText : MonoBehaviour
     public static void Write(TMP_Text text, string value, bool arabicOnly = false)
     {
         if (text == null) return;
+        JourneyLanguageTextStyle.ApplyTo(text, arabicOnly);
         bool farsi = !arabicOnly && JourneyLocalization.Language == 0;
         if (text is RTLTextMeshPro rtl) { rtl.Farsi = farsi; rtl.ForceFix = false; rtl.text = value; }
         else if (text is RTLTextMeshPro3D rtl3d) { rtl3d.Farsi = farsi; rtl3d.text = value; }

@@ -146,6 +146,10 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
         oldCameraEnabled = gameplayCamera != null && gameplayCamera.enabled;
         if (gameplayCamera != null) gameplayCamera.enabled = false;
         if (stageRoot != null) stageRoot.SetActive(true);
+        var surface = GetComponent<JourneyWardrobePreviewSurface>();
+        if (surface != null) surface.Begin();
+        // Keep an onscreen camera for Screen Space Camera canvases; the model camera now renders offscreen.
+        if (surface != null && surface.IsRendering && gameplayCamera != null) gameplayCamera.enabled = oldCameraEnabled;
         previewCamera.enabled = true;
         FitPreviewCamera();
         if (settingsPanel != null) settingsPanel.SetActive(false);
@@ -223,7 +227,8 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
             if (!found) { bounds = renderer.bounds; found = true; } else bounds.Encapsulate(renderer.bounds);
         }
         if (!found) return;
-        float aspect = Mathf.Max(0.1f, (Screen.width * previewCamera.rect.width) / Mathf.Max(1f, Screen.height * previewCamera.rect.height));
+        float aspect = previewCamera.targetTexture != null ? Mathf.Max(0.1f, previewCamera.aspect) :
+            Mathf.Max(0.1f, (Screen.width * previewCamera.rect.width) / Mathf.Max(1f, Screen.height * previewCamera.rect.height));
         float tangent = Mathf.Tan(previewCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
         float radius = Mathf.Sqrt(bounds.extents.x * bounds.extents.x + bounds.extents.z * bounds.extents.z);
         float distance = Mathf.Max(bounds.extents.y / tangent, radius / (tangent * aspect)) * 1.2f + radius;
@@ -239,6 +244,8 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
     private void Restore()
     {
         RestoreOtherUI();
+        var surface = GetComponent<JourneyWardrobePreviewSurface>();
+        if (surface != null) surface.End();
         if (previewCamera != null) previewCamera.enabled = false;
         if (stageRoot != null) stageRoot.SetActive(false);
         if (wardrobePanel != null) wardrobePanel.SetActive(false);
