@@ -115,3 +115,16 @@ SceneBackups/
 /Assets/CenteredForest_WithVegetation.asset.meta
 /Assets/CenteredForest_Test.asset
 /Assets/CenteredForest_Test.asset.meta
+.cptr
+
+# Large Unity terrain assets excluded from GitHub
+/Assets/Forest_ExpandedNegativeX_Extended.asset
+/Assets/Forest_ExpandedNegativeX_Extended_Extended.asset
+/Assets/Forest_ExpandedNegativeX_Extended_Extended_Extended.asset
+/Assets/TerrainData_a48294cb-e98e-4658-b8b0-77c2e28a0f59.asset
+/Assets/TerrainData_a48294cb-e98e-4658-b8b0-77c2e28a0f59_Extended.asset
+/Assets/Forest_ExpandedNegativeX_Extended.asset.meta
+/Assets/Forest_ExpandedNegativeX_Extended_Extended.asset.meta
+/Assets/Forest_ExpandedNegativeX_Extended_Extended_Extended.asset.meta
+/Assets/TerrainData_a48294cb-e98e-4658-b8b0-77c2e28a0f59.asset.meta
+/Assets/TerrainData_a48294cb-e98e-4658-b8b0-77c2e28a0f59_Extended.asset.meta
