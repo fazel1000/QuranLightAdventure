@@ -12,6 +12,8 @@ public sealed class JourneyWardrobeDrag : MonoBehaviour, IPointerDownHandler, IP
     [Min(1f)] public float degreesPerScreenHeight = 180f;
     [Tooltip("Off allows full vertical turns as well as horizontal turns. On keeps the camera upright within the pitch limits.")]
     public bool limitVerticalRotation;
+    public bool invertHorizontal;
+    public bool invertVertical;
     [Range(-89f, 0f)] public float minimumPitch = -70f;
     [Range(0f, 89f)] public float maximumPitch = 70f;
     private int pointer = int.MinValue;
@@ -56,8 +58,8 @@ public sealed class JourneyWardrobeDrag : MonoBehaviour, IPointerDownHandler, IP
     public void OnDrag(PointerEventData e)
     {
         if (e.pointerId != pointer || target == null || previewCamera == null) return;
-        float horizontal = -e.delta.x * degreesPerScreenWidth / Mathf.Max(1f, screenRect.width);
-        float vertical = e.delta.y * degreesPerScreenHeight / Mathf.Max(1f, screenRect.height);
+        float horizontal = e.delta.x * degreesPerScreenWidth / Mathf.Max(1f, screenRect.width) * (invertHorizontal ? -1f : 1f);
+        float vertical = -e.delta.y * degreesPerScreenHeight / Mathf.Max(1f, screenRect.height) * (invertVertical ? -1f : 1f);
         if (limitVerticalRotation)
         {
             yaw = Mathf.Repeat(yaw + horizontal, 360f);

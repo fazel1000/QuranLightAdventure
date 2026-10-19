@@ -64,6 +64,21 @@ public sealed class JourneyMenuController : MonoBehaviour
     private bool previousPlayerControl;
     private bool started;
     private GameObject currentPanel;
+    private JourneyShuffleMusic gameplayMusic;
+    public bool IsSettingsOpen
+    {
+        get
+        {
+            var pages = GetComponent<JourneySettingsPages>();
+            return pages != null ? pages.IsOpen : settingPanel != null && settingPanel.activeSelf;
+        }
+    }
+    private void RefreshMenuMusicContext()
+    {
+        if (feedback == null) return;
+        if (gameplayMusic != null && gameplayMusic.playInSettings && IsSettingsOpen) feedback.StopMenuMusic();
+        else feedback.ShowMenuMusic(false);
+    }
 
     private void Awake()
     {
@@ -75,6 +90,7 @@ public sealed class JourneyMenuController : MonoBehaviour
             if (selector.gameObject.scene == gameObject.scene) selector.enabled = false;
         feedback = GetComponent<JourneyUIFeedback>();
         if (feedback == null) feedback = gameObject.AddComponent<JourneyUIFeedback>();
+        gameplayMusic = FindFirstObjectByType<JourneyShuffleMusic>(FindObjectsInactive.Include);
         if (!ValidateReferences()) enabled = false;
     }
 
@@ -102,6 +118,7 @@ public sealed class JourneyMenuController : MonoBehaviour
     private void LateUpdate()
     {
         if (!IsMenuOpen) return;
+        RefreshMenuMusicContext();
 
         // GC's existing On Start currently locks the cursor. UI input needs
         // finite screen coordinates, so menus must keep that cursor unlocked.
@@ -188,6 +205,7 @@ public sealed class JourneyMenuController : MonoBehaviour
         ClearSelection();
         mainMenuPanel.SetActive(false);
         settingPanel.SetActive(false);
+        GetComponent<JourneySettingsPages>()?.HideAll();
         if (firstPanel != null) firstPanel.SetActive(false);
         currentPanel = null;
         feedback.StopMenuMusic();
@@ -213,9 +231,15 @@ public sealed class JourneyMenuController : MonoBehaviour
 
         mainMenuPanel.SetActive(target == mainMenuPanel);
         settingPanel.SetActive(target == settingPanel);
+        var pages = GetComponent<JourneySettingsPages>();
+        if (pages != null)
+        {
+            if (target == settingPanel) pages.ShowPageImmediate(0);
+            else pages.HideAll();
+        }
         if (firstPanel != null) firstPanel.SetActive(target == firstPanel);
         target.transform.SetAsLastSibling();
-        feedback.ShowMenuMusic(false);
+        RefreshMenuMusicContext();
 
         if (!IsMenuOpen || !capturedGameplayInput)
         {

@@ -2,12 +2,23 @@ using UnityEngine;
 
 public static class JourneyGuardGround
 {
+    private static Terrain[] cachedTerrains;
+    private static float refreshAt;
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void Reset() { cachedTerrains = null; refreshAt = 0f; }
+    private static Terrain[] Terrains()
+    {
+        if (!Application.isPlaying) return Terrain.activeTerrains;
+        if (cachedTerrains == null || Time.unscaledTime >= refreshAt)
+        { cachedTerrains = Terrain.activeTerrains; refreshAt = Time.unscaledTime + 1f; }
+        return cachedTerrains;
+    }
     public static bool TryTerrain(Vector3 point, float maximumSlope, out Vector3 position, out Vector3 normal)
     {
         position = point; normal = Vector3.up;
         bool found = false;
         float height = float.NegativeInfinity;
-        foreach (var terrain in Terrain.activeTerrains)
+        foreach (var terrain in Terrains())
         {
             if (terrain == null || terrain.terrainData == null) continue;
             Vector3 start = terrain.transform.position, size = terrain.terrainData.size;

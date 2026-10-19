@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using GameCreator.Runtime.Characters;
 using UnityEditor;
@@ -10,138 +11,188 @@ using Object = UnityEngine.Object;
 
 public static class JourneyRiderGuardSetup
 {
-    private const string Source = "Assets/Horse Soldier/Rider knight animated character/Prefab/Rider_knight.prefab";
-    private const string Model = "Assets/Horse Soldier/Rider knight animated character/Model/Rider_knight.fbx";
-    private const string Folder = "Assets/Game/Animations/RiderGuard";
-    [MenuItem("Quran Kids/Create Rider Knight Guard Test")]
-    private static void Setup()
+    private static string Source(bool zombie) => zombie ? "Assets/Zombie Sodier/Rider zombie animated character/Prefab/Rider_zombie.prefab" : "Assets/Horse Soldier/Rider knight animated character/Prefab/Rider_knight.prefab";
+    private static string Model(bool zombie) => zombie ? "Assets/Zombie Sodier/Rider zombie animated character/Model/Rider_zombie.fbx" : "Assets/Horse Soldier/Rider knight animated character/Model/Rider_knight.fbx";
+    [MenuItem("Quran Kids/Guards/Configure Selected Riders")]
+    private static void ConfigureSelected()
     {
         if (EditorApplication.isPlaying) return;
-        var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-        var previous = Object.FindObjectsByType<JourneyRiderGuard>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-            .FirstOrDefault(item => item.gameObject.scene == scene);
-        if (previous != null) { Selection.activeGameObject = previous.gameObject; Debug.Log("The guard test already exists. Move its Home and Lookout route points.", previous); return; }
-        var source = AssetDatabase.LoadAssetAtPath<GameObject>(Source);
-        var clips = AssetDatabase.LoadAllAssetsAtPath(Model).OfType<AnimationClip>().Where(clip => !clip.name.StartsWith("__preview__", StringComparison.Ordinal)).ToArray();
-        AnimationClip Find(string suffix) => clips.FirstOrDefault(clip => clip.name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
-        var idle = Find("_Idle"); var walk = Find("_Walk"); var run = Find("_Run"); var roar = Find("_Victory"); var rest = Find("_Idle_long") ?? idle;
-        if (source == null || idle == null || walk == null || run == null || roar == null)
-        { Debug.LogError("Horse Soldier source prefab or Idle/Walk/Run/Victory clips are missing."); return; }
-        var player = Object.FindObjectsByType<Character>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-            .FirstOrDefault(item => item.IsPlayer && item.gameObject.scene == scene);
-        Vector3 origin = player != null ? player.transform.position : SceneView.lastActiveSceneView != null ? SceneView.lastActiveSceneView.pivot : Vector3.zero;
-        var menu = Object.FindObjectsByType<JourneyMenuController>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(item => item.gameObject.scene == scene);
-        if (menu != null)
+        var result = new HashSet<JourneyRiderGuard>();
+        foreach (var selected in Selection.gameObjects)
         {
-            var data = new SerializedObject(menu);
-            var start = data.FindProperty("startPoint")?.objectReferenceValue as Transform;
-            if (start != null) origin = start.position;
+            if (!selected.scene.IsValid()) continue;
+            var guard = selected.GetComponent<JourneyRiderGuard>() ?? selected.GetComponentInParent<JourneyRiderGuard>() ?? selected.GetComponentInChildren<JourneyRiderGuard>(true);
+            if (guard != null) { Upgrade(guard); result.Add(guard); continue; }
+            var model = PrefabUtility.GetOutermostPrefabInstanceRoot(selected) ?? selected;
+            string path = AssetDatabase.GetAssetPath(PrefabUtility.GetCorrespondingObjectFromSource(model));
+            if (!path.Contains("Horse Soldier") && !path.Contains("Zombie Sodier")) continue;
+            var configured = Configure(model, path.Contains("Zombie Sodier")); if (configured != null) result.Add(configured);
         }
-        var existingModel = Object.FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-            .Where(item => item.gameObject.scene == scene)
-            .Select(item => PrefabUtility.GetOutermostPrefabInstanceRoot(item.gameObject))
-            .Where(item => item != null).Distinct()
-            .FirstOrDefault(item => AssetDatabase.GetAssetPath(PrefabUtility.GetCorrespondingObjectFromSource(item)) == Source);
-        Vector3 home = Vector3.zero, lookout = Vector3.zero;
-        bool routeFound = existingModel != null && JourneyGuardGround.TryTerrain(existingModel.transform.position, 35f, out home, out _)
-            && FindLookout(home, out lookout);
-        // Existing rider position is preferred; otherwise find a nearby walkable hill.
-        if (!routeFound && !FindRoute(origin, out home, out lookout))
-        { Debug.LogError("No short walkable hill route found. Put the rider or player near an active Terrain and run this command again."); return; }
-        EnsureFolder(Folder);
-        AnimationClip idleCopy = Copy(idle, "Idle", true), restCopy = Copy(rest, "Rest", true);
-        AnimationClip walkCopy = Copy(walk, "Walk", true), runCopy = Copy(run, "Run", true), roarCopy = Copy(roar, "Roar", false);
-        string controllerPath = Folder + "/JourneyRiderGuard.controller";
-        var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
-        if (controller == null)
+        if (result.Count == 0) Debug.LogWarning("Select Rider_knight / Rider_zombie instances or their patrol groups in Hierarchy.");
+        else { Selection.objects = result.Select(item => (Object)item.gameObject).ToArray(); AssetDatabase.SaveAssets(); }
+    }
+    [MenuItem("Quran Kids/Guards/Upgrade Guards In Active Scene")]
+    public static void UpgradeAll()
+    {
+        if (EditorApplication.isPlaying) return;
+        var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene(); int count = 0;
+        foreach (var guard in Object.FindObjectsByType<JourneyRiderGuard>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (guard.gameObject.scene == scene) { Upgrade(guard); count++; }
+        Debug.Log("Updated " + count + " guards. Each patrol has its own point list; running scale is 0.8 and distance sleeping is enabled.");
+    }
+    [MenuItem("Quran Kids/Guards/Create Knight Patrol")]
+    private static void CreateKnight() { Create(false); }
+    [MenuItem("Quran Kids/Guards/Create Zombie Patrol")]
+    private static void CreateZombie() { Create(true); }
+    [MenuItem("Quran Kids/Create Rider Knight Guard Test")]
+    private static void LegacyCreate() { Create(false); }
+    private static void Create(bool zombie)
+    {
+        if (EditorApplication.isPlaying) return;
+        var source = AssetDatabase.LoadAssetAtPath<GameObject>(Source(zombie));
+        if (source == null) { Debug.LogError("Rider prefab missing: " + Source(zombie)); return; }
+        Vector3 position = SceneView.lastActiveSceneView != null ? SceneView.lastActiveSceneView.pivot : Vector3.zero;
+        if (JourneyGuardGround.TryTerrain(position, 35f, out var ground, out _)) position = ground;
+        else
         {
-            controller = AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
-            var machine = controller.layers[0].stateMachine;
-            foreach (var item in new[] { ("Idle", idleCopy), ("Rest", restCopy), ("Walk", walkCopy), ("Run", runCopy), ("Roar", roarCopy) })
+            var player = Object.FindObjectsByType<Character>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(item => item.IsPlayer);
+            if (player != null && JourneyGuardGround.TryTerrain(player.transform.position, 35f, out ground, out _)) position = ground;
+            else
             {
-                var state = machine.AddState(item.Item1); state.motion = item.Item2;
-                if (item.Item1 == "Idle") machine.defaultState = state;
+                var terrain = Terrain.activeTerrains.FirstOrDefault(item => item != null && item.terrainData != null);
+                if (terrain != null && JourneyGuardGround.TryTerrain(terrain.transform.position + terrain.terrainData.size * 0.5f, 35f, out ground, out _)) position = ground;
             }
-            EditorUtility.SetDirty(controller);
         }
-        Undo.IncrementCurrentGroup(); int group = Undo.GetCurrentGroup(); Undo.SetCurrentGroupName("Create rider guard test");
-        var root = new GameObject("Rider Knight Patrol Test"); Undo.RegisterCreatedObjectUndo(root, "Create patrol test");
-        var homeObject = new GameObject("Home"); homeObject.transform.SetParent(root.transform); homeObject.transform.position = home;
-        var lookoutObject = new GameObject("Lookout"); lookoutObject.transform.SetParent(root.transform); lookoutObject.transform.position = lookout;
-        var actor = new GameObject("Rider Knight Guard"); actor.transform.SetParent(root.transform); actor.transform.position = home;
-        actor.transform.rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(lookout - home, Vector3.up));
-        GameObject model;
-        if (existingModel != null)
+        var model = (GameObject)PrefabUtility.InstantiatePrefab(source);
+        Undo.RegisterCreatedObjectUndo(model, "Create rider"); model.transform.position = position;
+        var guard = Configure(model, zombie);
+        if (guard != null)
         {
-            model = existingModel;
-            Undo.SetTransformParent(model.transform, actor.transform, "Use existing rider for patrol");
-            Undo.RecordObject(model.transform, "Center rider visual");
-            Undo.RecordObject(model, "Enable rider test"); model.SetActive(true);
+            Selection.activeGameObject = guard.gameObject;
+            if (SceneView.lastActiveSceneView != null) SceneView.lastActiveSceneView.Frame(new Bounds(guard.transform.position, new Vector3(12, 8, 12)), false);
         }
-        else model = (GameObject)PrefabUtility.InstantiatePrefab(source, actor.transform);
-        model.transform.localPosition = Vector3.zero; model.transform.localRotation = Quaternion.identity;
-        PrefabUtility.RecordPrefabInstancePropertyModifications(model.transform);
-        PrefabUtility.RecordPrefabInstancePropertyModifications(model);
+    }
+    private static JourneyRiderGuard Configure(GameObject model, bool zombie)
+    {
+        var controller = Controller(zombie, out var roar);
+        if (controller == null) return null;
+        Vector3 home = model.transform.position;
+        if (JourneyGuardGround.TryTerrain(home, 60f, out var grounded, out _)) home = grounded;
+        var group = new GameObject(zombie ? "Zombie Patrol" : "Knight Patrol");
+        Undo.RegisterCreatedObjectUndo(group, "Create independent patrol"); group.transform.SetPositionAndRotation(home, Quaternion.Euler(0f, model.transform.eulerAngles.y, 0f));
+        var actor = new GameObject(zombie ? "Zombie Guard" : "Knight Guard"); actor.transform.SetParent(group.transform, false);
+        Undo.SetTransformParent(model.transform, actor.transform, "Wrap rider model");
+        Undo.RecordObject(model.transform, "Center rider model"); model.transform.localPosition = Vector3.zero; model.transform.localRotation = Quaternion.identity;
         var animator = model.GetComponentInChildren<Animator>(true);
-        Undo.RecordObject(animator, "Assign patrol controller");
-        animator.runtimeAnimatorController = controller; animator.applyRootMotion = false; animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-        PrefabUtility.RecordPrefabInstancePropertyModifications(animator);
-        var guard = actor.AddComponent<JourneyRiderGuard>(); guard.animator = animator;
-        guard.homePoint = homeObject.transform; guard.lookoutPoint = lookoutObject.transform;
-        guard.roarAnimation = roarCopy;
-        guard.menu = menu;
-        AssetDatabase.SaveAssets(); EditorSceneManager.MarkSceneDirty(scene);
-        Undo.CollapseUndoOperations(group); Selection.activeGameObject = actor;
-        if (SceneView.lastActiveSceneView != null) SceneView.lastActiveSceneView.Frame(new Bounds(home, new Vector3(12, 8, 12)), false);
-        Debug.Log("Rider guard placed on a nearby walkable hill. Save scene. On gameplay: walk to Lookout, pause, Victory with roar audio, run home, idle 10 seconds, repeat. Assign sound clips on JourneyRiderGuard.", guard);
+        if (animator == null) { Debug.LogError("Rider Animator is missing.", model); return null; }
+        Undo.RecordObject(animator, "Assign patrol controller"); animator.runtimeAnimatorController = controller; animator.applyRootMotion = false; animator.cullingMode = AnimatorCullingMode.CullCompletely;
+        PrefabUtility.RecordPrefabInstancePropertyModifications(animator); PrefabUtility.RecordPrefabInstancePropertyModifications(model.transform);
+        var guard = Undo.AddComponent<JourneyRiderGuard>(actor);
+        guard.animator = animator; guard.roarAnimation = roar;
+        var points = new GameObject("Patrol Points"); points.transform.SetParent(group.transform, false); guard.routeRoot = points.transform;
+        var homeObject = new GameObject("Point 01 Home"); homeObject.transform.SetParent(points.transform, false);
+        var lookout = new GameObject("Point 02"); lookout.transform.SetParent(points.transform, false);
+        Vector3 destination = home + model.transform.forward * 6f;
+        if (JourneyGuardGround.TryTerrain(destination, guard.maximumSlope, out var target, out _) && JourneyGuardGround.SafeSegment(home, target, guard.maximumSlope)) destination = target;
+        lookout.transform.position = destination;
+        guard.patrolPoints.Add(new JourneyRiderGuard.PatrolPoint { point = homeObject.transform, waitSeconds = 10f, roarHere = false, runToPoint = true });
+        guard.patrolPoints.Add(new JourneyRiderGuard.PatrolPoint { point = lookout.transform, waitSeconds = 2f, roarHere = true });
+        BindScene(guard); EditorUtility.SetDirty(guard); EditorSceneManager.MarkSceneDirty(group.scene);
+        return guard;
     }
-    private static bool FindRoute(Vector3 origin, out Vector3 home, out Vector3 lookout)
+    private static void BindScene(JourneyRiderGuard guard)
     {
-        home = lookout = Vector3.zero; float best = float.NegativeInfinity; bool found = false;
-        var terrains = Terrain.activeTerrains;
-        if (terrains.Length == 0) return false;
-        if (!JourneyGuardGround.TryTerrain(origin, 89f, out _, out _))
-            origin = terrains[0].transform.position + terrains[0].terrainData.size * 0.5f;
-        for (int ring = 1; ring <= 3; ring++)
-        for (int angle = 0; angle < 16; angle++)
+        guard.menu = Object.FindObjectsByType<JourneyMenuController>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(item => item.gameObject.scene == guard.gameObject.scene);
+        if (guard.distanceTarget == null) guard.distanceTarget = Object.FindObjectsByType<Character>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(item => item.IsPlayer && item.gameObject.scene == guard.gameObject.scene)?.transform;
+    }
+    private static void Upgrade(JourneyRiderGuard guard)
+    {
+        Undo.RecordObject(guard, "Upgrade patrol route"); guard.MigrateLegacyRoute();
+        guard.runSpeedScale = 0.8f; guard.sleepWhenDistant = true; BindScene(guard);
+        if (guard.animator != null)
+        { Undo.RecordObject(guard.animator, "Cull distant animation"); guard.animator.cullingMode = AnimatorCullingMode.CullCompletely; PrefabUtility.RecordPrefabInstancePropertyModifications(guard.animator); }
+        // Normalize the original test group so a prefab instance spawns at its own origin.
+        var parent = guard.transform.parent;
+        if (parent != null && parent.name == "Rider Knight Patrol Test")
         {
-            float radians = angle * Mathf.PI * 2f / 16f;
-            Vector3 candidate = origin + new Vector3(Mathf.Cos(radians), 0, Mathf.Sin(radians)) * (12f * ring);
-            if (!JourneyGuardGround.TryTerrain(candidate, 35f, out var ground, out _) || !FindLookout(ground, out var destination)) continue;
-            float score = ground.y - Vector3.Distance(origin, ground) * 0.02f;
-            if (score <= best) continue;
-            best = score; home = ground; lookout = destination; found = true;
+            var children = parent.Cast<Transform>().ToArray();
+            var positions = children.Select(item => item.position).ToArray();
+            Undo.RecordObject(parent, "Center patrol prefab root");
+            foreach (var child in children) Undo.RecordObject(child, "Preserve patrol positions");
+            parent.position = guard.patrolPoints.Count > 0 && guard.patrolPoints[0].point != null ? guard.patrolPoints[0].point.position : guard.transform.position;
+            for (int i = 0; i < children.Length; i++) children[i].position = positions[i];
+            Undo.RecordObject(parent.gameObject, "Rename patrol group");
+            parent.name = "Knight Patrol";
         }
-        return found;
+        EditorUtility.SetDirty(guard); PrefabUtility.RecordPrefabInstancePropertyModifications(guard); EditorSceneManager.MarkSceneDirty(guard.gameObject.scene);
     }
-    private static bool FindLookout(Vector3 home, out Vector3 destination)
+    public static void AddPoint(JourneyRiderGuard guard)
     {
-        destination = home; float highest = float.NegativeInfinity; bool found = false;
-        for (int i = 0; i < 12; i++)
+        if (EditorApplication.isPlaying || EditorUtility.IsPersistent(guard)) return;
+        Undo.RecordObject(guard, "Add patrol point"); guard.MigrateLegacyRoute();
+        if (guard.routeRoot == null || guard.routeRoot.IsChildOf(guard.transform))
         {
-            float angle = i * Mathf.PI * 2f / 12f;
-            Vector3 point = home + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * 8f;
-            if (!JourneyGuardGround.TryTerrain(point, 35f, out var ground, out _) || ground.y <= highest || !JourneyGuardGround.SafeSegment(home, ground, 35f)) continue;
-            highest = ground.y; destination = ground; found = true;
+            var root = new GameObject("Patrol Points"); Undo.RegisterCreatedObjectUndo(root, "Create patrol points");
+            root.transform.SetParent(guard.transform.parent, false); guard.routeRoot = root.transform;
         }
-        return found;
+        Vector3 position = guard.patrolPoints.Count > 0 && guard.patrolPoints[guard.patrolPoints.Count - 1].point != null ? guard.patrolPoints[guard.patrolPoints.Count - 1].point.position : guard.transform.position;
+        position += guard.transform.forward * 5f;
+        if (JourneyGuardGround.TryTerrain(position, guard.maximumSlope, out var ground, out _)) position = ground;
+        var point = new GameObject("Point " + (guard.patrolPoints.Count + 1).ToString("00")); Undo.RegisterCreatedObjectUndo(point, "Create patrol point");
+        point.transform.SetParent(guard.routeRoot, true); point.transform.position = position;
+        guard.patrolPoints.Add(new JourneyRiderGuard.PatrolPoint { point = point.transform });
+        EditorUtility.SetDirty(guard); PrefabUtility.RecordPrefabInstancePropertyModifications(guard); EditorSceneManager.MarkSceneDirty(guard.gameObject.scene);
+        Selection.activeGameObject = guard.gameObject; SceneView.RepaintAll();
     }
-    private static AnimationClip Copy(AnimationClip source, string name, bool loop)
+    public static void MakeRouteUnique(JourneyRiderGuard guard)
     {
-        string path = Folder + "/" + name + ".anim";
-        var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
-        if (clip != null) return clip;
-        clip = Object.Instantiate(source); clip.name = name; clip.hideFlags = HideFlags.None;
-        var settings = AnimationUtility.GetAnimationClipSettings(clip); settings.loopTime = loop;
-        AnimationUtility.SetAnimationClipSettings(clip, settings);
-        AnimationUtility.SetAnimationEvents(clip, Array.Empty<AnimationEvent>());
-        AssetDatabase.CreateAsset(clip, path); return clip;
+        if (EditorApplication.isPlaying || EditorUtility.IsPersistent(guard)) return;
+        Undo.RecordObject(guard, "Make patrol route unique"); guard.MigrateLegacyRoute();
+        var root = new GameObject("Patrol Points Unique"); Undo.RegisterCreatedObjectUndo(root, "Create unique route"); root.transform.SetParent(guard.transform.parent, false);
+        var entries = new List<JourneyRiderGuard.PatrolPoint>();
+        foreach (var item in guard.patrolPoints)
+        {
+            if (item == null || item.point == null) continue;
+            var point = new GameObject("Point " + (entries.Count + 1).ToString("00")); point.transform.SetParent(root.transform, false); point.transform.position = item.point.position;
+            entries.Add(new JourneyRiderGuard.PatrolPoint { point = point.transform, waitSeconds = item.waitSeconds, roarHere = item.roarHere, afterRoarSeconds = item.afterRoarSeconds, runToPoint = item.runToPoint });
+        }
+        guard.routeRoot = root.transform; guard.patrolPoints = entries;
+        EditorUtility.SetDirty(guard); PrefabUtility.RecordPrefabInstancePropertyModifications(guard); EditorSceneManager.MarkSceneDirty(guard.gameObject.scene);
+    }
+    private static AnimatorController Controller(bool zombie, out AnimationClip roar)
+    {
+        string folder = zombie ? "Assets/Game/Animations/ZombieGuard" : "Assets/Game/Animations/RiderGuard";
+        EnsureFolder(folder);
+        var clips = AssetDatabase.LoadAllAssetsAtPath(Model(zombie)).OfType<AnimationClip>().Where(item => !item.name.StartsWith("__preview__", StringComparison.Ordinal)).ToArray();
+        AnimationClip Find(string suffix) => clips.FirstOrDefault(item => item.name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+        var idle = Find("_Idle"); var walk = Find("_Walk"); var run = Find("_Run"); var victory = Find("_Victory");
+        roar = null;
+        if (idle == null || walk == null || run == null || victory == null) { Debug.LogError("Rider animation clips are missing: " + Model(zombie)); return null; }
+        var motions = new[] { ("Idle", idle, true), ("Rest", Find("_Idle_long") ?? idle, true), ("Walk", walk, true), ("Run", run, true), ("Roar", victory, false) };
+        string path = folder + (zombie ? "/JourneyZombieGuard.controller" : "/JourneyRiderGuard.controller");
+        var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(path) ?? AnimatorController.CreateAnimatorControllerAtPath(path);
+        var machine = controller.layers[0].stateMachine;
+        foreach (var item in motions)
+        {
+            string clipPath = folder + "/" + item.Item1 + ".anim";
+            var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+            if (clip == null)
+            {
+                clip = Object.Instantiate(item.Item2); clip.name = item.Item1; clip.hideFlags = HideFlags.None;
+                var settings = AnimationUtility.GetAnimationClipSettings(clip); settings.loopTime = item.Item3; AnimationUtility.SetAnimationClipSettings(clip, settings);
+                AnimationUtility.SetAnimationEvents(clip, Array.Empty<AnimationEvent>()); AssetDatabase.CreateAsset(clip, clipPath);
+            }
+            var state = machine.states.Select(entry => entry.state).FirstOrDefault(entry => entry.name == item.Item1) ?? machine.AddState(item.Item1);
+            if (state.motion == null) state.motion = clip;
+            if (item.Item1 == "Idle") machine.defaultState = state;
+            if (item.Item1 == "Roar") roar = clip;
+        }
+        EditorUtility.SetDirty(controller); AssetDatabase.SaveAssets(); return controller;
     }
     private static void EnsureFolder(string path)
     {
         string current = "Assets";
-        foreach (string part in path.Split('/').Skip(1))
-        { if (!AssetDatabase.IsValidFolder(current + "/" + part)) AssetDatabase.CreateFolder(current, part); current += "/" + part; }
+        foreach (string part in path.Split('/').Skip(1)) { if (!AssetDatabase.IsValidFolder(current + "/" + part)) AssetDatabase.CreateFolder(current, part); current += "/" + part; }
     }
 }
 #endif

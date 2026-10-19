@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 1385580919215778372}
   - component: {fileID: 4759478985837029549}
   - component: {fileID: 9018893587114616389}
+  - component: {fileID: 5757057509626908441}
   m_Layer: 0
   m_Name: Translate Text
   m_TagString: Untagged
@@ -34,7 +35,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 143}
+  m_AnchoredPosition: {x: 0, y: 90}
   m_SizeDelta: {x: 1920, y: 400}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4759478985837029549
@@ -75,8 +76,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294964404
-  m_fontColor: {r: 0.70754707, g: 0.95557004, b: 1, a: 1}
+    rgba: 4284546908
+  m_fontColor: {r: 0.36078432, g: 1, b: 0.3764706, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -93,8 +94,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 156.53
-  m_fontSizeBase: 156.53
+  m_fontSize: 143.04
+  m_fontSizeBase: 143.04
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -105,7 +106,7 @@ MonoBehaviour:
   m_textAlignment: 65535
   m_characterSpacing: -4.1
   m_wordSpacing: 0
-  m_lineSpacing: 16.52
+  m_lineSpacing: 9.12
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
@@ -143,6 +144,29 @@ MonoBehaviour:
     \u0627\u0644\u0631\u0651\u064E\u062D\u0652\u0645\u064E\u0670\u0646\u0650 \u0627\u0644\u0631\u0651\u064E\u062D\u0650\u064A\u0645\u0650\""
   fixTags: 1
   forceFix: 0
+--- !u!114 &5757057509626908441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 491093107037279618}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 232548728e745074ba7c6da4a3fbef58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 9018893587114616389}
+  alwaysArabic: 0
+  persian:
+    font: {fileID: 0}
+    fontSize: 0
+  english:
+    font: {fileID: 11400000, guid: 2a936c6c37e2c8b43b3546092af40230, type: 2}
+    fontSize: 0
+  arabic:
+    font: {fileID: 0}
+    fontSize: 0
 --- !u!1 &1296415061528777206
 GameObject:
   m_ObjectHideFlags: 0
@@ -472,6 +496,19 @@ MonoBehaviour:
   verseText: {fileID: 3289603327283111975}
   percentText: {fileID: 2382194695271268982}
   statusText: {fileID: 0}
+  translateText: {fileID: 0}
+  requireWordPuzzle: 1
+  requiredPuzzleNumber: 0
+  persianTranslationOverride: 
+  englishTranslationOverride: 
+  playRenderers:
+  - {fileID: 6889459954060557489}
+  recordRenderers:
+  - {fileID: 6934691461488265177}
+  playingColor: {r: 0.15, g: 0.85, b: 0.25, a: 1}
+  recordingColor: {r: 1, g: 0.1, b: 0.12, a: 1}
+  pendingColor: {r: 1, g: 0.65, b: 0.05, a: 1}
+  lockedColor: {r: 0.35, g: 0.35, b: 0.35, a: 1}
   pressedOffset: {x: 0.1, y: 0, z: 0}
   moveDuration: 0.18
   moveEase: 6
@@ -510,7 +547,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0.8724875, z: -0, w: -0.4886365}
   m_LocalPosition: {x: 0.05, y: -5.053208, z: -4.39}
   m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 1
+  m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1188241991750868336}
   - {fileID: 5370574005569508836}
@@ -531,7 +568,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   surah: {fileID: 11400000, guid: 0869a9afd3015174fbd78b79f27b8ac3, type: 2}
-  verseNumber: 1
+  verseNumber: 3
   verse: {fileID: 0}
   voiceService: {fileID: 0}
   scoreReceiver: {fileID: 0}
@@ -544,6 +581,19 @@ MonoBehaviour:
   verseText: {fileID: 3289603327283111975}
   percentText: {fileID: 2382194695271268982}
   statusText: {fileID: 0}
+  translateText: {fileID: 9018893587114616389}
+  requireWordPuzzle: 1
+  requiredPuzzleNumber: 0
+  persianTranslationOverride: 
+  englishTranslationOverride: 
+  playRenderers:
+  - {fileID: 6889459954060557489}
+  recordRenderers:
+  - {fileID: 6934691461488265177}
+  playingColor: {r: 0.15, g: 0.85, b: 0.25, a: 1}
+  recordingColor: {r: 1, g: 0.1, b: 0.12, a: 1}
+  pendingColor: {r: 1, g: 0.65, b: 0.05, a: 1}
+  lockedColor: {r: 0.35, g: 0.35, b: 0.35, a: 1}
   pressedOffset: {x: 0.1, y: 0, z: 0}
   moveDuration: 0.18
   moveEase: 6
@@ -565,6 +615,7 @@ GameObject:
   - component: {fileID: 4553367172993360469}
   - component: {fileID: 6477608354772687696}
   - component: {fileID: 3289603327283111975}
+  - component: {fileID: 7845107253822908942}
   m_Layer: 0
   m_Name: VerseText
   m_TagString: Untagged
@@ -588,7 +639,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 428}
+  m_AnchoredPosition: {x: 0, y: 365}
   m_SizeDelta: {x: 1920, y: 400}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6477608354772687696
@@ -697,6 +748,29 @@ MonoBehaviour:
     \u0627\u0644\u0631\u0651\u064E\u062D\u0652\u0645\u064E\u0670\u0646\u0650 \u0627\u0644\u0631\u0651\u064E\u062D\u0650\u064A\u0645\u0650\""
   fixTags: 1
   forceFix: 0
+--- !u!114 &7845107253822908942
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8210302276840921708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 232548728e745074ba7c6da4a3fbef58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 3289603327283111975}
+  alwaysArabic: 1
+  persian:
+    font: {fileID: 0}
+    fontSize: 0
+  english:
+    font: {fileID: 0}
+    fontSize: 0
+  arabic:
+    font: {fileID: 0}
+    fontSize: 0
 --- !u!1 &8669590762562903425
 GameObject:
   m_ObjectHideFlags: 0
@@ -812,6 +886,7 @@ GameObject:
   - component: {fileID: 6822478151860335193}
   - component: {fileID: 1391389052018627814}
   - component: {fileID: 2382194695271268982}
+  - component: {fileID: 1395456487822328887}
   m_Layer: 0
   m_Name: PercentText
   m_TagString: Untagged
@@ -835,7 +910,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 165}
+  m_AnchoredPosition: {x: 0, y: 174}
   m_SizeDelta: {x: 1717.52, y: 375.2}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1391389052018627814
@@ -942,3 +1017,26 @@ MonoBehaviour:
   originalText: "\u0633\u0644\u0627\u0645"
   fixTags: 1
   forceFix: 0
+--- !u!114 &1395456487822328887
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9187546990051500916}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 232548728e745074ba7c6da4a3fbef58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 2382194695271268982}
+  alwaysArabic: 0
+  persian:
+    font: {fileID: 0}
+    fontSize: 0
+  english:
+    font: {fileID: 0}
+    fontSize: 0
+  arabic:
+    font: {fileID: 0}
+    fontSize: 0

@@ -37,6 +37,7 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
     { public Transform item; public HumanBodyBones bone; public Vector3 position, scale; public Quaternion rotation; }
     private readonly List<Attachment> attachments = new List<Attachment>();
     private bool open, oldCameraEnabled;
+    private int returnSettingsPage;
     public bool IsOpen => open;
     private IEnumerator Start()
     {
@@ -141,7 +142,10 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
     public void Open()
     {
         if (open || menu == null || menu.IsFirstLanguageOpen || wardrobePanel == null || previewCamera == null || preview == null) return;
+        var settingsPages = menu.GetComponent<JourneySettingsPages>();
+        returnSettingsPage = settingsPages != null ? settingsPages.CurrentPage : 0;
         menu.ShowSettings();
+        if (settingsPages != null) settingsPages.HideAll();
         if (gameplayCamera == null) gameplayCamera = Camera.main;
         oldCameraEnabled = gameplayCamera != null && gameplayCamera.enabled;
         if (gameplayCamera != null) gameplayCamera.enabled = false;
@@ -239,7 +243,11 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
     {
         if (!open) return;
         Restore();
-        if (menu != null && menu.isActiveAndEnabled) menu.ShowSettings();
+        if (menu != null && menu.isActiveAndEnabled)
+        {
+            menu.ShowSettings();
+            menu.GetComponent<JourneySettingsPages>()?.ShowPageImmediate(returnSettingsPage);
+        }
     }
     private void Restore()
     {
