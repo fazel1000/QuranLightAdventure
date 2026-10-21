@@ -141,7 +141,7 @@ Material:
     - _Glossiness: 0.6
     - _GlossyReflections: 0
     - _IsUseEmission: 0
-    - _Metallic: 0
+    - _Metallic: 0.53
     - _Metl: 0
     - _Mode: 0
     - _OcclusionStrength: 1
@@ -159,7 +159,7 @@ Material:
     - _RimPower: 3
     - _Shininess: 1
     - _Sm: 0
-    - _Smoothness: 0.6
+    - _Smoothness: 0
     - _SmoothnessTextureChannel: 0
     - _SpecIntensity: 1
     - _SpecSmooth: 0.05
@@ -174,8 +174,8 @@ Material:
     - _ZWrite: 1
     - __dirty: 1
     m_Colors:
-    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _BaseColor: {r: 0.57232696, g: 0.57232696, b: 0.57232696, a: 1}
+    - _Color: {r: 0.5723269, g: 0.5723269, b: 0.5723269, a: 1}
     - _Color0: {r: 0, g: 0, b: 0, a: 0}
     - _Color1: {r: 0, g: 0, b: 0, a: 0}
     - _DiffuseColor: {r: 1, g: 1, b: 1, a: 1}
