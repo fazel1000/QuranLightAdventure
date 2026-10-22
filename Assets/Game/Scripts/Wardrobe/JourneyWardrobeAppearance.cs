@@ -7,6 +7,7 @@ public sealed class JourneyWardrobeAppearance : MonoBehaviour
 {
     // Same order on preview and gameplay prefab variants. Hats are optional additions.
     public GameObject[] hatOptions = Array.Empty<GameObject>();
+    public bool preserveAuthoredOutfitUntilChoice;
     public static event Action Changed;
     private const string Key = "JourneyOfLight.Outfit.v1";
     [Serializable] private class Outfit { public int[] values = { 1, 1, 1, 1, 0, 0, 0, 0 }; }
@@ -48,6 +49,7 @@ public sealed class JourneyWardrobeAppearance : MonoBehaviour
     private void Set(string name, bool value) { if (parts.TryGetValue(name, out var go) && go != null) go.SetActive(value); }
     private void Apply()
     {
+        if (preserveAuthoredOutfitUntilChoice && !PlayerPrefs.HasKey(Key)) return;
         int top = Mathf.Clamp(GetSelection(0), 0, 5), pants = Mathf.Clamp(GetSelection(1), 0, 4);
         bool dress = top == 5, scarf = GetSelection(5) != 0;
         int hat = Mathf.Clamp(GetSelection(7), 0, hatOptions.Length);

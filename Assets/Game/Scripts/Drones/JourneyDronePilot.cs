@@ -45,7 +45,7 @@ public sealed class JourneyDronePilot : MonoBehaviour
                 if (!cameraTaken && Gameplay && current.Elapsed >= current.cameraDelay) TakeCamera();
             }
         }
-        if (!active && Gameplay && player != null && (vehicleDriver == null || !vehicleDriver.IsDriving) &&
+        if (!active && Gameplay && player != null && !JourneyRideSession.BusyFor(this) && !JourneyRadialMenu.IsOpen && (vehicleDriver == null || !vehicleDriver.IsDriving) &&
             !LightBrushPuzzle.IsMovementBlocked && !JourneyPlayerCombat.IsMovementBlocked && !JourneyVoiceBoard.IsPointerCaptured)
         {
             float best = interactionDistance * interactionDistance;
@@ -67,12 +67,13 @@ public sealed class JourneyDronePilot : MonoBehaviour
     }
     public void LaunchNearest()
     {
-        if (active || !Gameplay || nearest == null || player == null || viewCamera == null || coinReceiver == null ||
+        if (active || !Gameplay || nearest == null || player == null || viewCamera == null || coinReceiver == null || JourneyRadialMenu.IsOpen || JourneyRideSession.BusyFor(this) ||
             (vehicleDriver != null && vehicleDriver.IsDriving)) return;
         if (!JourneyMovementSettings.HasSharedJoystick)
         { Debug.LogWarning("Drone: select Player > Input Move > Mobile > Left Stick Or Drag.", this); return; }
+        if (!JourneyRideSession.TryAcquire(this)) return;
         current = nearest;
-        if (!current.Launch(this)) { current = null; return; }
+        if (!current.Launch(this)) { current = null; JourneyRideSession.Release(this); return; }
         characterWasEnabled = player.enabled;
         cameraWasEnabled = gameCreatorCamera != null && gameCreatorCamera.enabled;
         savedCameraPosition = viewCamera.transform.position; savedCameraRotation = viewCamera.transform.rotation;
@@ -138,7 +139,7 @@ public sealed class JourneyDronePilot : MonoBehaviour
     private void Restore()
     {
         if (!active) return;
-        active = false;
+        active = false; JourneyRideSession.Release(this);
         if (current != null) current.SetPaused(false);
         if (cameraTaken) JourneyMovementSettings.SetDrivingMode(false);
         if (player != null) player.enabled = characterWasEnabled;

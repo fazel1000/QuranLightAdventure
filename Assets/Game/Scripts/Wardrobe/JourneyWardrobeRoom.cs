@@ -76,7 +76,7 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
             newAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             newAnimator.applyRootMotion = gameplayRootMotion;
             RestoreAttachments(newAnimator);
-            if (combat != null) combat.playerAnimator = newAnimator;
+            if (combat != null) combat.RebindCharacterAnimator(newAnimator);
             if (stoneController != null) stoneController.RebindCharacterAnimator(newAnimator);
         }
         return true;

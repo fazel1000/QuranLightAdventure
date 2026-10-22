@@ -32,7 +32,7 @@ public sealed class JourneyChargedJump : MonoBehaviour, IPointerDownHandler, IPo
         if (drone == null) drone = FindFirstObjectByType<JourneyDronePilot>();
     }
     private bool Allowed => player != null && player.isActiveAndEnabled && !player.IsDead && player.Driver != null &&
-        player.Motion.CanJump && player.Player.IsControllable && Time.timeScale > 0f &&
+        player.Motion.CanJump && player.Player.IsControllable && Time.timeScale > 0f && !JourneyRadialMenu.IsOpen && !JourneyRideSession.IsOccupied &&
         (menu == null || menu.IsGameplayActive) && (vehicle == null || !vehicle.IsDriving) &&
         (drone == null || !drone.IsFlying) && !LightBrushPuzzle.IsMovementBlocked && !JourneyStoneThrowController.IsMovementBlocked && !JourneyVoiceBoard.IsPointerCaptured;
     public void OnPointerDown(PointerEventData e)

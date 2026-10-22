@@ -43,7 +43,8 @@ public sealed class JourneyVehicleDriver : MonoBehaviour
     {
         if (activeSession && (current == null || !current.isActiveAndEnabled)) Leave(entryPosition, entryRotation);
         nearest = null;
-        if (!activeSession && Gameplay && player != null)
+        if (!activeSession && Gameplay && player != null && !JourneyRideSession.BusyFor(this) && !JourneyRadialMenu.IsOpen &&
+            !JourneyStoneThrowController.IsMovementBlocked && !LightBrushPuzzle.IsMovementBlocked)
         {
             float distance = enterDistance * enterDistance;
             foreach (JourneyVehicle car in JourneyVehicle.Available)
@@ -65,9 +66,10 @@ public sealed class JourneyVehicleDriver : MonoBehaviour
     }
     public void Enter()
     {
-        if (activeSession || !Gameplay || nearest == null || player == null) return;
+        if (activeSession || !Gameplay || nearest == null || player == null || JourneyRadialMenu.IsOpen || JourneyRideSession.BusyFor(this)) return;
         if (!JourneyMovementSettings.HasSharedJoystick)
         { Debug.LogWarning("Select Player > Input Move > Mobile > Left Stick Or Drag before driving.", this); return; }
+        if (!JourneyRideSession.TryAcquire(this)) return;
         current = nearest;
         entryPosition = player.transform.position;
         entryRotation = player.transform.rotation;
@@ -150,7 +152,7 @@ public sealed class JourneyVehicleDriver : MonoBehaviour
                 gameCreatorCamera.Sync();
             }
         }
-        current = null; activeSession = false;
+        current = null; activeSession = false; JourneyRideSession.Release(this);
         if (drivingPanel != null) drivingPanel.SetActive(false);
     }
     private void LateUpdate()

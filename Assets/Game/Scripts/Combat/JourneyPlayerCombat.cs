@@ -83,7 +83,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     // World simulation must not depend on the on-foot combat component being enabled.
     public bool WorldGameplayActive => ready && focused && !paused &&
         menu != null && menu.IsGameplayActive && Time.timeScale > 0f;
-    public bool GameplayActive => ready && isActiveAndEnabled && focused && !paused &&
+    public bool GameplayActive => ready && isActiveAndEnabled && focused && !paused && !JourneyRadialMenu.IsOpen &&
         menu != null && menu.IsGameplayActive && Time.timeScale > 0f;
     public Vector3 BodyPoint => player.transform.position;
     public Vector3 HitPoint => player.transform.position + Vector3.up * hitHeight;
@@ -112,11 +112,8 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
         if (menu == null) menu = FindFirstObjectByType<JourneyMenuController>();
         if (player == null || playerAnimator == null || menu == null || startPoint == null || attackButton == null)
         { Fail("Assign Player, Player Animator, Menu, Start Point and Attack Button."); return; }
-        layer = playerAnimator.GetLayerIndex(LayerName);
-        if (layer < 0 || !playerAnimator.HasState(layer, Animator.StringToHash(AttackState)))
+        if (!RebindCharacterAnimator(player.Animim.Animator != null ? player.Animim.Animator : playerAnimator))
         { Fail("Run Quran Kids > Setup Journey Combat using the player's current Animator."); return; }
-        expectedController = playerAnimator.runtimeAnimatorController;
-        playerAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         if (bodyHitbox == null) bodyHitbox = player.GetComponent<Collider>();
         defenseReady = defendButton != null && shieldHitbox != null && bodyHitbox != null &&
             playerAnimator.HasState(layer, Animator.StringToHash(DefenseState));
@@ -125,6 +122,18 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
         CurrentHealth = Mathf.Max(1, maximumHealth);
         ready = true;
         RefreshHealth();
+    }
+
+    public bool RebindCharacterAnimator(Animator replacement)
+    {
+        EndDefense(); EndAttack(); playerAnimator = replacement;
+        layer = replacement != null ? replacement.GetLayerIndex(LayerName) : -1;
+        expectedController = replacement != null ? replacement.runtimeAnimatorController : null;
+        ready = replacement != null && layer >= 0 && replacement.HasState(layer, Animator.StringToHash(AttackState)) &&
+            player != null && menu != null && startPoint != null && attackButton != null;
+        if (replacement != null) replacement.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        defenseReady = ready && defendButton != null && shieldHitbox != null && bodyHitbox != null && replacement.HasState(layer, Animator.StringToHash(DefenseState));
+        return ready;
     }
 
     private void Update()

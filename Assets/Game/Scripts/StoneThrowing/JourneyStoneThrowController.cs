@@ -97,13 +97,15 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     public void CancelForRespawn() { SuspendInteraction(); }
     public Transform HandSocket => handSocket;
     public Transform ThrowOrigin => throwOrigin;
+    public void BindCharacterSockets(Animator replacement, Transform hand, Transform origin)
+    { RebindCharacterAnimator(replacement); handSocket = hand; throwOrigin = origin; }
     public void RebindCharacterAnimator(Animator replacement)
     {
         SuspendInteraction();
         animator = replacement;
     }
 
-    public bool CanContinueFlight => initialized && hasFocus && !paused && isActiveAndEnabled && menu != null && menu.IsGameplayActive;
+    public bool CanContinueFlight => initialized && hasFocus && !paused && isActiveAndEnabled && !JourneyRadialMenu.IsOpen && menu != null && menu.IsGameplayActive;
     private JourneyThrowableStone held;
     private JourneyThrowableStone pickupCandidate;
     private Coroutine pickupRoutine;

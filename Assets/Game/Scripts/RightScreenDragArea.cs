@@ -20,7 +20,7 @@ public sealed class RightScreenDragArea : MonoBehaviour,
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (LightBrushPuzzle.IsMovementBlocked)
+        if (LightBrushPuzzle.IsMovementBlocked || JourneyRadialMenu.IsOpen)
         {
             ClearInput();
             return;
@@ -34,7 +34,7 @@ public sealed class RightScreenDragArea : MonoBehaviour,
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (LightBrushPuzzle.IsMovementBlocked)
+        if (LightBrushPuzzle.IsMovementBlocked || JourneyRadialMenu.IsOpen)
         {
             ClearInput();
             return;
@@ -57,7 +57,7 @@ public sealed class RightScreenDragArea : MonoBehaviour,
 
     public static Vector2 ConsumeDelta()
     {
-        if (LightBrushPuzzle.IsMovementBlocked)
+        if (LightBrushPuzzle.IsMovementBlocked || JourneyRadialMenu.IsOpen)
         {
             ClearInput();
             return Vector2.zero;

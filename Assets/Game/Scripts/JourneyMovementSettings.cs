@@ -184,7 +184,7 @@ public sealed class JourneyMovementSettings : MonoBehaviour
 
     private bool GameplayAllowsInput()
     {
-        return !LightBrushPuzzle.IsMovementBlocked && initialized && hasFocus && !isPaused && !isQuitting &&
+        return !LightBrushPuzzle.IsMovementBlocked && !JourneyRadialMenu.IsOpen && initialized && hasFocus && !isPaused && !isQuitting &&
             Time.timeScale > 0f && menu != null && !menu.IsMenuOpen;
     }
 
@@ -329,7 +329,7 @@ public sealed class JourneyMovementSettings : MonoBehaviour
     internal static bool TryReadMovement(out Vector2 value)
     {
         value = Vector2.zero;
-        if (drivingMode || LightBrushPuzzle.IsMovementBlocked) return true;
+        if (drivingMode || LightBrushPuzzle.IsMovementBlocked || JourneyRadialMenu.IsOpen) return true;
         if (instance == null || !instance.isActiveAndEnabled) return false;
 
         if (!instance.GameplayAllowsInput())
