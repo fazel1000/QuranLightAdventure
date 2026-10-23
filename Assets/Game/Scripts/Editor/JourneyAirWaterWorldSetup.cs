@@ -16,33 +16,77 @@ public static class JourneyAirWaterWorldSetup
     [MenuItem("Quran Kids/Setup Air Water and World Systems")]
     private static void Setup()
     {
-        if (EditorApplication.isPlaying) return;
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        { Debug.LogError("Exit Play Mode before running Setup Air Water and World Systems. No scene changes were made."); return; }
         Scene scene = SceneManager.GetActiveScene();
         var menu = All<JourneyMenuController>(scene).FirstOrDefault();
         var car = All<JourneyVehicleDriver>(scene).FirstOrDefault();
-        Character player = car != null ? car.player : All<Character>(scene).FirstOrDefault(c => c.IsPlayer);
-        if (menu == null || player == null) { Debug.LogError("Open First Grade of Elementary School with its Player and JourneyMenuController."); return; }
+        Character player = car != null ? car.player : null;
+        if (player == null) player = All<Character>(scene).FirstOrDefault(c => c.IsPlayer);
+        if (menu == null || player == null)
+        { Debug.LogError("Setup stopped in active scene '" + scene.name + "': its Player or JourneyMenuController is missing. Activate First Grade of Elementary School in the Hierarchy."); return; }
         var menuData = new SerializedObject(menu);
-        var main = menuData.FindProperty("mainMenuPanel").objectReferenceValue as GameObject;
+        var mainProperty = menuData.FindProperty("mainMenuPanel");
+        var main = mainProperty != null ? mainProperty.objectReferenceValue as GameObject : null;
         var canvas = main != null ? main.GetComponentInParent<Canvas>(true) : null;
-        if (canvas == null) { Debug.LogError("The menu must belong to the gameplay Canvas."); return; }
+        if (canvas == null) canvas = All<Canvas>(scene).FirstOrDefault(c => c.isRootCanvas && c.renderMode != RenderMode.WorldSpace);
+        if (canvas == null) { Debug.LogError("Setup stopped: a screen-space gameplay Canvas is missing in '" + scene.name + "'."); return; }
         Undo.IncrementCurrentGroup(); int group = Undo.GetCurrentGroup(); Undo.SetCurrentGroupName("Set up air/water and world systems");
-        ConfigurePlayer(scene, player);
+        var failed = new List<string>();
+        void Step(string name, Action action)
+        {
+            try { action(); Debug.Log("World setup [" + scene.name + "] OK: " + name); }
+            catch (Exception exception)
+            {
+                failed.Add(name); Debug.LogError("World setup [" + scene.name + "] FAILED: " + name + ". " + exception.Message);
+                Debug.LogException(exception);
+            }
+        }
         var manager = scene.GetRootGameObjects().FirstOrDefault(go => go.name == "Journey World Systems");
         if (manager == null) { manager = new GameObject("Journey World Systems"); Undo.RegisterCreatedObjectUndo(manager, "Create world manager"); SceneManager.MoveGameObjectToScene(manager, scene); }
+        if (!manager.activeSelf) { Undo.RecordObject(manager, "Enable world manager"); manager.SetActive(true); }
+        Step("Player animation and equipment", () => ConfigurePlayer(scene, player));
         Transform water = Named(scene, "Water Plane");
+        JourneyWaterVolume waterVolume = null;
+        Step("Underwater Volume", () =>
+        {
+            Transform region = Named(scene, "Underwater Volume");
+            if (region == null) throw new InvalidOperationException("Underwater Volume was not found.");
+            waterVolume = JourneyWorldSetupUtility.Add<JourneyWaterVolume>(region.gameObject);
+            var box = JourneyWorldSetupUtility.Add<BoxCollider>(region.gameObject);
+            Undo.RecordObjects(new Object[] { waterVolume, box }, "Connect water region");
+            box.isTrigger = true; box.enabled = true; waterVolume.waterSurface = water;
+            if (!waterVolume.IsUsable) throw new InvalidOperationException("Underwater Volume must be active and upright; rotation around Y is supported.");
+            JourneyWorldSetupUtility.Dirty(box); JourneyWorldSetupUtility.Dirty(waterVolume);
+        });
         Transform helicopter = All<Transform>(scene).FirstOrDefault(t => t.name.Trim() == "Helicopter Police" && Find(t, "Main Rotor Blades") != null);
         Transform submarine = All<Transform>(scene).FirstOrDefault(t => t.name.Trim() == "Submarine" && Find(t, "SubmarineSeat") != null);
-        if (helicopter != null) ConfigureVehicle(helicopter, false, menu, water); else Debug.LogWarning("Helicopter Police with Main Rotor Blades was not found.");
-        if (submarine != null) ConfigureVehicle(submarine, true, menu, water); else Debug.LogWarning("Submarine with SubmarineSeat was not found.");
+        Step("Helicopter Rigidbody and BoxCollider", () =>
+        {
+            if (helicopter == null) throw new InvalidOperationException("Helicopter Police with Main Rotor Blades was not found.");
+            ConfigureVehicle(helicopter, false, menu, water);
+        });
+        Step("Submarine Rigidbody, BoxCollider and bubbles", () =>
+        {
+            if (submarine == null) throw new InvalidOperationException("Submarine with SubmarineSeat was not found.");
+            ConfigureVehicle(submarine, true, menu, water);
+            var vehicle = submarine.GetComponent<JourneyAirWaterVehicle>(); vehicle.waterVolume = waterVolume;
+            JourneyWorldSetupUtility.Dirty(vehicle);
+            if (waterVolume == null) throw new InvalidOperationException("Connect Underwater Volume before testing the submarine.");
+        });
         bool newPilot = manager.GetComponent<JourneyAirWaterPilot>() == null;
         var pilot = JourneyWorldSetupUtility.Add<JourneyAirWaterPilot>(manager);
         Undo.RecordObject(pilot, "Connect flight UI"); pilot.player = player; pilot.menu = menu;
         pilot.viewCamera = car != null ? car.viewCamera : Camera.main;
         pilot.gameCreatorCamera = car != null ? car.gameCreatorCamera : All<GameCreator.Runtime.Cameras.TCamera>(scene).FirstOrDefault();
-        ConnectControls(pilot.helicopter, Named(scene, "Helicopter Buttons"), false, newPilot);
-        ConnectControls(pilot.submarine, Named(scene, "Submarine Buttons"), true, newPilot);
-        var radial = ConfigureRadial(scene, canvas.rootCanvas.transform, menu);
+        Step("Vehicle right-side camera control", () => ConfigureVehicleLook(pilot, canvas.rootCanvas.transform));
+        Step("Helicopter and submarine buttons", () =>
+        {
+            ConnectControls(pilot.helicopter, Named(scene, "Helicopter Buttons"), false, newPilot);
+            ConnectControls(pilot.submarine, Named(scene, "Submarine Buttons"), true, newPilot);
+        });
+        JourneyRadialMenu radial = null;
+        Step("Radial menu", () => radial = ConfigureRadial(scene, canvas.rootCanvas.transform, menu));
         var jump = All<JourneyChargedJump>(scene).FirstOrDefault();
         var foot = new HashSet<GameObject>(car != null && car.onFootUI != null ? car.onFootUI.Where(go => go != null) : Enumerable.Empty<GameObject>());
         if (jump != null) foot.Add(jump.gameObject); if (radial != null) foot.Add(radial.gameObject);
@@ -57,7 +101,9 @@ public static class JourneyAirWaterWorldSetup
         // Existing car/drone snapshots must also hide the new on-foot actions.
         if (car != null) { Undo.RecordObject(car, "Include new on-foot controls"); car.onFootUI = Union(car.onFootUI, jump != null ? jump.gameObject : null, radial != null ? radial.gameObject : null); JourneyWorldSetupUtility.Dirty(car); }
         if (drone != null) { Undo.RecordObject(drone, "Include new on-foot controls"); drone.onFootUI = Union(drone.onFootUI, jump != null ? jump.gameObject : null, radial != null ? radial.gameObject : null); JourneyWorldSetupUtility.Dirty(drone); }
-        ConfigureMinimap(scene, manager, canvas.rootCanvas.transform, menu, player);
+        Step("Offline minimap UI and live markers", () => ConfigureMinimap(scene, manager, canvas.rootCanvas.transform, menu, player));
+        Step("Stone aiming marker", () => JourneySwimmingSetup.ConfigureAim(scene, canvas));
+        Step("Swimming animations and buoyancy", () => JourneySwimmingSetup.Configure(scene, player, menu, canvas));
         if (newPilot)
         {
             var map = manager.GetComponent<JourneyMinimap>();
@@ -73,7 +119,9 @@ public static class JourneyAirWaterWorldSetup
         Undo.RecordObject(rain, "Connect rain cycle"); rain.menu = menu; rain.followTarget = pilot.viewCamera != null ? pilot.viewCamera.transform : player.transform; rain.waterSurface = water;
         JourneyWorldSetupUtility.Dirty(rain); JourneyWorldSetupUtility.Dirty(pilot);
         EditorSceneManager.MarkSceneDirty(scene); Undo.CollapseUndoOperations(group); AssetDatabase.SaveAssets(); Selection.activeGameObject = manager;
-        Debug.Log("Connected player animation, helicopter, submarine, rain, minimap and radial menu. Assign vehicle sound clips, Rain Effect Prefab and radial item icons/actions; run Bake Offline Minimap, then save the scene.", manager);
+        if (failed.Count == 0)
+            Debug.Log("World setup COMPLETE in '" + scene.name + "'. Connected player animation, helicopter, submarine, Underwater Volume, swimming, rain, minimap and radial menu. Save scene, assign sound/effect/item fields, then Bake Offline Minimap and Validate.", manager);
+        else Debug.LogError("World setup INCOMPLETE in '" + scene.name + "'. Failed steps: " + string.Join(", ", failed) + ". Other steps were retained. Fix the first FAILED message above and rerun Setup.", manager);
     }
     private static IEnumerable<T> All<T>(Scene scene) where T : Component => scene.GetRootGameObjects().SelectMany(go => go.GetComponentsInChildren<T>(true));
     private static Transform Named(Scene scene, string name) => All<Transform>(scene).FirstOrDefault(t => string.Equals(t.name.Trim(), name, StringComparison.OrdinalIgnoreCase));
@@ -84,14 +132,14 @@ public static class JourneyAirWaterWorldSetup
     private static void ConfigurePlayer(Scene scene, Character player)
     {
         var animator = player.Animim.Animator;
-        if (animator == null || !animator.isHuman) { Debug.LogError("Player model must have a valid Humanoid Animator.", player); return; }
+        if (animator == null || !animator.isHuman) throw new InvalidOperationException("Player model must have a valid Humanoid Animator.");
         var binder = JourneyWorldSetupUtility.Add<JourneyPlayerModelBindings>(player.gameObject);
         Undo.RecordObject(binder, "Keep gameplay animation after model changes");
         var controller = binder.gameplayController as AnimatorController;
         if (!GameplayController(controller)) controller = animator.runtimeAnimatorController as AnimatorController;
         if (!GameplayController(controller)) controller = AssetDatabase.LoadAssetAtPath<AnimatorController>("Assets/Game/Animations/Combat/Generated/Player_With_Shield 3.controller");
         if (!GameplayController(controller)) controller = AssetDatabase.FindAssets("t:AnimatorController", new[] { "Assets/Game" }).Select(AssetDatabase.GUIDToAssetPath).Select(AssetDatabase.LoadAssetAtPath<AnimatorController>).FirstOrDefault(GameplayController);
-        if (controller == null) { Debug.LogError("A gameplay controller containing locomotion, SwordAttack and ShieldBlock is required.", player); return; }
+        if (!GameplayController(controller)) throw new InvalidOperationException("A gameplay controller containing locomotion, SwordAttack and ShieldBlock is required.");
         Undo.RecordObject(animator, "Restore gameplay controller"); animator.runtimeAnimatorController = controller; animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         var combat = player.GetComponent<JourneyPlayerCombat>(); var stone = All<JourneyStoneThrowController>(scene).FirstOrDefault();
         binder.player = player; binder.gameplayController = controller; binder.combat = combat; binder.stone = stone;
@@ -146,13 +194,14 @@ public static class JourneyAirWaterWorldSetup
             vehicle.horizontalSpeed = submarine ? 9f : 16f; vehicle.verticalSpeed = submarine ? 3f : 5f;
             vehicle.cameraDistance = submarine ? 12f : 10f; vehicle.cameraHeight = submarine ? 3f : 4f;
             body.mass = submarine ? 2500f : 1200f; body.linearDamping = 0.2f; body.angularDamping = 2f;
+            body.useGravity = !submarine; body.detectCollisions = true;
             body.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ; body.isKinematic = true;
             body.interpolation = RigidbodyInterpolation.Interpolate; body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
         }
         bool newHull = root.GetComponent<BoxCollider>() == null;
         vehicle.hull = JourneyWorldSetupUtility.Add<BoxCollider>(root.gameObject);
         if (newHull) JourneyWorldSetupUtility.FitHull(vehicle.hull, submarine ? root : Find(root, "Body") ?? root);
-        vehicle.hull.isTrigger = false;
+        vehicle.hull.isTrigger = false; vehicle.hull.enabled = true;
         if (vehicle.cameraTarget == null)
         {
             vehicle.cameraTarget = JourneyWorldSetupUtility.Child(root, "Vehicle Camera Target").transform;
@@ -175,13 +224,25 @@ public static class JourneyAirWaterWorldSetup
             var bubbles = JourneyWorldSetupUtility.Add<JourneySubmarineBubbles>(root.gameObject); Undo.RecordObject(bubbles, "Connect engine exhaust points");
             bubbles.exhaustPoints = new[] { Find(root, "Exhaust Point 1"), Find(root, "Exhaust Point 2"), Find(root, "Exhaust Point 3") }.Where(t => t != null).ToArray();
             if (bubbles.bubbleMaterial == null) bubbles.bubbleMaterial = JourneyWorldSetupUtility.BubbleMaterial(); JourneyWorldSetupUtility.Dirty(bubbles);
+            var impact = JourneyWorldSetupUtility.Add<JourneySubmarineSeabedImpact>(root.gameObject);
+            Undo.RecordObject(impact, "Connect seabed collision sound and sand");
+            if (impact.impactAudioSource == null || impact.impactAudioSource == vehicle.engineSource || impact.impactAudioSource == vehicle.effectsSource)
+                impact.impactAudioSource = JourneyWorldSetupUtility.Add<AudioSource>(JourneyWorldSetupUtility.Child(root, "Seabed Impact Audio"));
+            Undo.RecordObject(impact.impactAudioSource, "Configure seabed audio");
+            impact.impactAudioSource.playOnAwake = false; impact.impactAudioSource.loop = false;
+            impact.impactAudioSource.spatialBlend = 1f; impact.impactAudioSource.volume = 1f;
+            impact.impactAudioSource.minDistance = 5f; impact.impactAudioSource.maxDistance = 100f;
+            JourneyWorldSetupUtility.Dirty(impact.impactAudioSource); JourneyWorldSetupUtility.Dirty(impact);
         }
         JourneyWorldSetupUtility.Dirty(vehicle); JourneyWorldSetupUtility.Dirty(vehicle.hull); JourneyWorldSetupUtility.Dirty(body);
     }
     private static void ConnectControls(JourneyAirWaterPilot.Controls controls, Transform panel, bool submarine, bool layout)
     {
-        if (panel == null) { Debug.LogWarning((submarine ? "Submarine" : "Helicopter") + " Buttons panel missing."); return; }
+        if (panel == null) throw new InvalidOperationException((submarine ? "Submarine" : "Helicopter") + " Buttons panel missing.");
         controls.panel = panel.gameObject;
+        var panelGraphic = panel.GetComponent<Graphic>();
+        if (panelGraphic != null)
+        { Undo.RecordObject(panelGraphic, "Let background drags reach the vehicle camera"); panelGraphic.raycastTarget = false; JourneyWorldSetupUtility.Dirty(panelGraphic); }
         controls.enter = Find(panel, submarine ? "Enter Submarine" : "Enter Helicopter")?.GetComponent<Button>();
         controls.exit = Find(panel, submarine ? "Exit Submarine" : "Exit Helicopter")?.GetComponent<Button>();
         var up = Find(panel, "Up"); var down = Find(panel, "Down");
@@ -198,6 +259,24 @@ public static class JourneyAirWaterWorldSetup
             Place(controls.exit, new Vector2(1f, 0.5f), new Vector2(-320f, 180f));
         }
         Undo.RecordObject(panel.gameObject, "Hide vehicle controls before entering"); panel.gameObject.SetActive(false);
+    }
+    private static void ConfigureVehicleLook(JourneyAirWaterPilot pilot, Transform canvas)
+    {
+        if (pilot.vehicleLookArea == null)
+        {
+            var go = JourneyWorldSetupUtility.Child(canvas, "Vehicle Right Look Area", typeof(RectTransform), typeof(Image), typeof(RightScreenDragArea));
+            pilot.vehicleLookArea = JourneyWorldSetupUtility.Add<RightScreenDragArea>(go);
+        }
+        var area = pilot.vehicleLookArea; var rect = area.transform as RectTransform;
+        if (rect == null) throw new InvalidOperationException("Vehicle Look Area must be a UI RectTransform.");
+        Undo.RecordObjects(new Object[] { rect, area, area.gameObject }, "Connect right-side vehicle camera drag");
+        rect.SetAsFirstSibling(); rect.anchorMin = new Vector2(0.5f, 0f); rect.anchorMax = Vector2.one;
+        rect.offsetMin = rect.offsetMax = Vector2.zero; rect.localScale = Vector3.one;
+        var image = JourneyWorldSetupUtility.Add<Image>(area.gameObject);
+        Undo.RecordObject(image, "Configure transparent camera drag surface"); image.color = Color.clear; image.raycastTarget = true;
+        area.enabled = true; area.gameObject.SetActive(false);
+        JourneyWorldSetupUtility.Dirty(area); JourneyWorldSetupUtility.Dirty(rect); JourneyWorldSetupUtility.Dirty(image);
+        JourneyWorldSetupUtility.Dirty(pilot);
     }
     private static void Place(Component component, Vector2 anchor, Vector2 position)
     {
@@ -249,6 +328,8 @@ public static class JourneyAirWaterWorldSetup
             Debug.Log("RadialMenu Button was missing from the saved scene, so one was created.", go);
         }
         var radial = JourneyWorldSetupUtility.Add<JourneyRadialMenu>(button.gameObject); Undo.RecordObject(radial, "Connect radial item menu"); radial.menu = menu;
+        var obsoletePedal = button.GetComponent<JourneyVehiclePedal>();
+        if (obsoletePedal != null) Undo.DestroyObjectImmediate(obsoletePedal);
         if (radial.menuRoot == null)
         {
             var go = JourneyWorldSetupUtility.Child(canvas, "Journey Radial Menu", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));

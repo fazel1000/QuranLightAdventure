@@ -139,6 +139,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     private void Update()
     {
         if (!ready) return;
+        if (JourneyPlayerSwimming.IsSwimming) { EndDefense(); EndAttack(); }
         if (attackButton != null) attackButton.interactable = CanAttack();
         if (defendButton != null) defendButton.interactable = CanDefend();
         UpdateDefense();
@@ -199,7 +200,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
 
     private bool CanAttack()
     {
-        return GameplayActive && !IsAttacking && !IsDefending && Time.time >= nextAttackAt &&
+        return GameplayActive && !JourneyPlayerSwimming.IsSwimming && !IsAttacking && !IsDefending && Time.time >= nextAttackAt &&
             !LightBrushPuzzle.IsMovementBlocked && !JourneyVoiceBoard.IsPointerCaptured &&
             (stoneController == null || !stoneController.IsUsingStone) &&
             playerAnimator != null && playerAnimator.isActiveAndEnabled &&
@@ -228,7 +229,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
 
     private bool CanDefend()
     {
-        return defenseReady && GameplayActive && !IsAttacking && !IsDefending && Time.time >= nextDefenseAt &&
+        return defenseReady && GameplayActive && !JourneyPlayerSwimming.IsSwimming && !IsAttacking && !IsDefending && Time.time >= nextDefenseAt &&
             !LightBrushPuzzle.IsMovementBlocked && !JourneyVoiceBoard.IsPointerCaptured &&
             (stoneController == null || !stoneController.IsUsingStone) && playerAnimator != null &&
             playerAnimator.isActiveAndEnabled && playerAnimator.speed > 0f &&

@@ -8,6 +8,9 @@ public sealed class JourneySubmarineBubbles : MonoBehaviour
     public GameObject bubblePrefab;
     public Material bubbleMaterial;
     [Min(0f)] public float idleRate = 2f, fullSpeedRate = 45f;
+    [Tooltip("Applied once to both emission rates. 5 gives five times the existing bubbles.")]
+    [Min(0f)] public float emissionMultiplier = 5f;
+    [Min(1)] public int maximumParticlesPerSystem = 600;
     [Min(0f)] public float minimumSpeed = 0.4f, maximumSpeed = 3f;
     private JourneyAirWaterVehicle vehicle;
     private readonly List<ParticleSystem> systems = new List<ParticleSystem>();
@@ -28,7 +31,7 @@ public sealed class JourneySubmarineBubbles : MonoBehaviour
             if (bubblePrefab == null)
             {
                 particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                var main = particles.main; main.playOnAwake = false; main.loop = true; main.maxParticles = 300;
+                var main = particles.main; main.playOnAwake = false; main.loop = true;
                 main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.2f);
                 main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.09f);
                 main.startColor = new Color(0.8f, 0.95f, 1f, 0.6f);
@@ -41,6 +44,7 @@ public sealed class JourneySubmarineBubbles : MonoBehaviour
             {
                 system.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
                 var main = system.main; main.simulationSpace = ParticleSystemSimulationSpace.World;
+                main.maxParticles = Mathf.Max(1, maximumParticlesPerSystem);
                 main.stopAction = ParticleSystemStopAction.None; main.loop = true; main.playOnAwake = false;
                 systems.Add(system); system.Play(false);
             }
@@ -62,7 +66,8 @@ public sealed class JourneySubmarineBubbles : MonoBehaviour
         {
             if (particles == null) continue;
             var main = particles.main; main.startSpeed = Mathf.Lerp(minimumSpeed, maximumSpeed, speed);
-            var emission = particles.emission; emission.rateOverTime = underwater ? Mathf.Lerp(idleRate, fullSpeedRate, speed) : 0f;
+            var emission = particles.emission;
+            emission.rateOverTime = underwater ? Mathf.Lerp(idleRate, fullSpeedRate, speed) * Mathf.Max(0f, emissionMultiplier) : 0f;
         }
     }
     private void OnEnable() { paused = false; foreach (var particles in systems) if (particles != null) particles.Play(false); }

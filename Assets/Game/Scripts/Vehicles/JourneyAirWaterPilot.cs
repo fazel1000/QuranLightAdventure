@@ -19,6 +19,8 @@ public sealed class JourneyAirWaterPilot : MonoBehaviour
     public Camera viewCamera;
     public TCamera gameCreatorCamera;
     public Controls helicopter = new Controls(), submarine = new Controls();
+    [Tooltip("Transparent right-half drag surface, connected by Setup Air Water and World Systems.")]
+    public RightScreenDragArea vehicleLookArea;
     public Behaviour[] suspendWhileRiding = Array.Empty<Behaviour>();
     public GameObject[] onFootUI = Array.Empty<GameObject>();
     [Min(0.1f)] public float enterDistance = 4f;
@@ -71,6 +73,8 @@ public sealed class JourneyAirWaterPilot : MonoBehaviour
         }
         Show(helicopter, JourneyAirWaterVehicle.VehicleKind.Helicopter, nearestHelicopter);
         Show(submarine, JourneyAirWaterVehicle.VehicleKind.Submarine, nearestSubmarine);
+        if (vehicleLookArea != null && vehicleLookArea.gameObject.activeSelf != (active && Gameplay))
+            vehicleLookArea.gameObject.SetActive(active && Gameplay);
         if (!active || current == null) return;
         current.Freeze(!Gameplay);
         if (!Gameplay) { ResetInput(); return; }
@@ -118,6 +122,8 @@ public sealed class JourneyAirWaterPilot : MonoBehaviour
         if (gameCreatorCamera != null) gameCreatorCamera.enabled = false;
         current.SetOccupied(true); current.Freeze(false);
         JourneyMovementSettings.SetDrivingMode(true); RightScreenDragArea.ClearInput(); ResetInput();
+        RightScreenDragArea.Capture(this);
+        if (vehicleLookArea != null) vehicleLookArea.gameObject.SetActive(true);
         yaw = Quaternion.LookRotation(current.Forward, Vector3.up).eulerAngles.y;
         pitch = Mathf.Atan2(current.cameraHeight, current.cameraDistance) * Mathf.Rad2Deg;
         FollowCamera(true);
@@ -157,10 +163,16 @@ public sealed class JourneyAirWaterPilot : MonoBehaviour
         ResetInput();
         if (current != null) { current.Freeze(false); current.SetOccupied(false); }
         current = null; active = false; JourneyRideSession.Release(this);
+        RightScreenDragArea.Release(this);
+        if (vehicleLookArea != null) vehicleLookArea.gameObject.SetActive(false);
         JourneyMovementSettings.SetDrivingMode(false); RightScreenDragArea.ClearInput();
         foreach (var item in behaviours) if (item.Key != null) item.Key.enabled = item.Value;
         if (player != null)
-        { player.Driver.SetPosition(position); player.Driver.SetRotation(rotation); player.enabled = characterEnabled; }
+        {
+            // GC's SetPosition accepts feet position and adds half the capsule height.
+            player.Driver.SetPosition(position - Vector3.up * (player.Motion.Height * 0.5f));
+            player.Driver.SetRotation(rotation); player.enabled = characterEnabled;
+        }
         foreach (var item in colliders) if (item.Key != null) item.Key.enabled = item.Value;
         foreach (var item in renderers) if (item.Key != null) item.Key.enabled = item.Value;
         foreach (var item in ui) if (item.Key != null) item.Key.SetActive(item.Value);
@@ -183,7 +195,7 @@ public sealed class JourneyAirWaterPilot : MonoBehaviour
     private void FollowCamera(bool snap)
     {
         if (viewCamera == null || current == null) return;
-        Vector2 delta = RightScreenDragArea.ConsumeDelta();
+        Vector2 delta = RightScreenDragArea.ConsumeDelta(this);
         yaw += delta.x * orbitDegreesPerScreen / Mathf.Max(1, Screen.width);
         pitch = Mathf.Clamp(pitch - delta.y * orbitDegreesPerScreen / Mathf.Max(1, Screen.height), -15f, 80f);
         Vector3 target = current.cameraTarget != null ? current.cameraTarget.position : current.driverSeat.position;
@@ -207,6 +219,8 @@ public sealed class JourneyAirWaterPilot : MonoBehaviour
     private void OnDisable()
     {
         Bind(false); if (active) Leave(entryPosition, entryRotation);
+        RightScreenDragArea.Release(this);
+        if (vehicleLookArea != null) vehicleLookArea.gameObject.SetActive(false);
         if (helicopter.panel != null) helicopter.panel.SetActive(false); if (submarine.panel != null) submarine.panel.SetActive(false);
         JourneyRideSession.Release(this);
     }

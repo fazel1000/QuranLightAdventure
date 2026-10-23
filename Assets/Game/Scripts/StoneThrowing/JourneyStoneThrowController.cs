@@ -33,6 +33,12 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     [SerializeField] private LineRenderer trajectory;
     [Tooltip("Optional marker displayed above the nearest available stone.")]
     [SerializeField] private Transform pickupMarker;
+    [Header("Aim marker beside the finger")]
+    [SerializeField] private RectTransform aimReticle;
+    [SerializeField, Min(0f)] private float aimOffsetCentimeters = 1f;
+    [Tooltip("Zero uses Screen.dpi; set a value if the phone reports an incorrect DPI.")]
+    [SerializeField, Min(0f)] private float aimDpiOverride;
+    [SerializeField, Min(1f)] private float fallbackAimDpi = 160f;
     [Header("Pickup Range")]
     [SerializeField, Min(0.2f)] private float pickupDistance = 2.5f;
 
@@ -271,6 +277,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         draggingThrow = false;
         dragPointerId = int.MinValue;
         blockThroughFrame = Time.frameCount + 1;
+        if (aimReticle != null) aimReticle.gameObject.SetActive(false);
     }
 
     private void TryPickUp(int id, Vector2 position)
@@ -354,6 +361,31 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         return point;
     }
 
+    public Vector2 AimScreenPosition(Vector2 fingerPosition)
+    {
+        float dpi = aimDpiOverride > 0f ? aimDpiOverride : Screen.dpi;
+        if (float.IsNaN(dpi) || float.IsInfinity(dpi) || dpi < 50f || dpi > 1200f) dpi = Mathf.Max(1f, fallbackAimDpi);
+        Vector2 aim = fingerPosition + Vector2.left * (aimOffsetCentimeters * dpi / 2.54f);
+        Rect viewport = gameplayCamera != null ? gameplayCamera.pixelRect : new Rect(0f, 0f, Screen.width, Screen.height);
+        aim.x = Mathf.Clamp(aim.x, viewport.xMin + 1f, viewport.xMax - 1f);
+        aim.y = Mathf.Clamp(aim.y, viewport.yMin + 1f, viewport.yMax - 1f);
+        return aim;
+    }
+    private void UpdateAimReticle()
+    {
+        if (aimReticle == null) return;
+        bool visible = CanContinueFlight && held != null && draggingThrow && !pickingUp && !releasing;
+        aimReticle.gameObject.SetActive(visible);
+        if (!visible) return;
+        var canvas = aimReticle.GetComponentInParent<Canvas>();
+        var parent = aimReticle.parent as RectTransform;
+        if (canvas == null || parent == null) return;
+        Camera uiCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+        if (RectTransformUtility.ScreenPointToWorldPointInRectangle(parent, AimScreenPosition(dragPosition), uiCamera, out Vector3 world))
+            aimReticle.position = world;
+        aimReticle.SetAsLastSibling();
+    }
+
     private Vector3 VelocityTo(Vector3 aimPoint, float speedLimit, out float flightTime)
     {
         Vector3 displacement = aimPoint - throwOrigin.position;
@@ -379,7 +411,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
         int count = Mathf.Clamp(previewSegments, 12, 80);
         trajectory.positionCount = count + 1;
         Vector3 origin = throwOrigin.position, previous = origin;
-        Vector3 velocity = VelocityTo(AimPointAt(dragPosition), ChargedThrowSpeed, out float flightTime);
+        Vector3 velocity = VelocityTo(AimPointAt(AimScreenPosition(dragPosition)), ChargedThrowSpeed, out float flightTime);
         float step = Mathf.Max(Mathf.Max(0.02f, previewStep), flightTime / count);
         trajectory.SetPosition(0, origin);
         for (int i = 1; i <= count; i++)
@@ -402,7 +434,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     private void ThrowHeldStone(Vector2 screenPosition, float speed)
     {
         if (!CanContinueFlight || held == null || pickingUp || releasing) return;
-        releaseAimPoint = AimPointAt(screenPosition);
+        releaseAimPoint = AimPointAt(AimScreenPosition(screenPosition));
         releaseSpeed = speed;
         releasing = true;
         if (trajectory != null) trajectory.enabled = false;
@@ -460,6 +492,7 @@ public sealed class JourneyStoneThrowController : MonoBehaviour
     private void UpdateUI()
     {
         bool active = CanContinueFlight;
+        UpdateAimReticle();
         if (throwButton != null)
         {
             throwButton.gameObject.SetActive(active && held != null && !pickingUp);

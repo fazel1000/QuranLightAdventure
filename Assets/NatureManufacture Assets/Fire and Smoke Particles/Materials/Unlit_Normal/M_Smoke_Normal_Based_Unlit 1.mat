@@ -9,6 +9,8 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: M_Smoke_Normal_Based_Unlit 1
   m_Shader: {fileID: 4800000, guid: 6db450aeb5443944cbb81097b7c9fc83, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - EMISSION_PROCEDURAL_MASK_ON
   - USE_TRANSPARENCY_INTERSECTION_ON
@@ -28,9 +30,9 @@ Material:
   - TransparentBackface
   - TransparentDepthPostpass
   - RayTracingPrepass
-  - MOTIONVECTORS
-  - DepthOnly
   - SHADOWCASTER
+  - DepthOnly
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -385,6 +387,7 @@ Material:
     - _UVMappingMask: {r: 1, g: 0, b: 0, a: 0}
     - _UVMappingMaskEmissive: {r: 1, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!114 &1318547827804343616
 MonoBehaviour:
   m_ObjectHideFlags: 11

@@ -16,8 +16,15 @@ public static class JourneyOfflineMapBaker
     [MenuItem("Quran Kids/Bake Offline Minimap")]
     private static void BakeActive()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        { Debug.LogError("Exit Play Mode before baking the offline minimap."); return; }
         var map = Object.FindObjectsByType<JourneyMinimap>(FindObjectsInactive.Include, FindObjectsSortMode.None).FirstOrDefault(m => m.gameObject.scene == SceneManager.GetActiveScene());
-        if (map == null) { Debug.LogError("Run Setup Air Water and World Systems first."); return; }
+        if (map == null)
+        {
+            Debug.LogError("No JourneyMinimap exists in active scene '" + SceneManager.GetActiveScene().name +
+                "'. Run Quran Kids > Setup Air Water and World Systems outside Play Mode. Wait for OK: Offline minimap UI and live markers, then save the scene and retry Bake. Inspect the first FAILED setup step if setup stops.");
+            return;
+        }
         Bake(map);
     }
     public static void Bake(JourneyMinimap map)

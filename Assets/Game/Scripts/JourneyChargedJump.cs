@@ -63,6 +63,7 @@ public sealed class JourneyChargedJump : MonoBehaviour, IPointerDownHandler, IPo
     }
     private void LateUpdate()
     {
+        if (JourneyPlayerSwimming.IsSwimming || JourneyRideSession.IsOccupied) { jumping = false; return; }
         if (!jumping || player == null || player.Driver == null) return;
         if (!player.Driver.IsGrounded) leftGround = true;
         if ((leftGround && player.Driver.IsGrounded) || (!leftGround && Time.time - jumpTime > 0.3f)) { jumping = false; return; }
@@ -70,7 +71,7 @@ public sealed class JourneyChargedJump : MonoBehaviour, IPointerDownHandler, IPo
         if (player.Driver.WorldMoveDirection.y > 0f && player.transform.position.y > takeoffY + height)
         {
             Vector3 position = player.transform.position; position.y = takeoffY + height;
-            player.Driver.SetPosition(position); player.Driver.ResetVerticalVelocity();
+            player.Driver.SetPosition(position - Vector3.up * (player.Motion.Height * 0.5f)); player.Driver.ResetVerticalVelocity();
         }
     }
     private void OnApplicationFocus(bool focus) { if (!focus) pointer = int.MinValue; }

@@ -16,6 +16,14 @@ internal static class JourneyWorldSetupUtility
     }
     internal static Sprite Circle() => SpriteAsset("Circle", 128, (x, y) => new Color(1f, 1f, 1f, Mathf.Clamp01((0.98f - new Vector2(x, y).magnitude) * 64f)));
     internal static Sprite Arrow() => SpriteAsset("PlayerArrow", 64, (x, y) => new Color(1f, 1f, 1f, y > -0.8f && y < 0.9f && Mathf.Abs(x) < (0.9f - y) * 0.5f ? 1f : 0f));
+    internal static Sprite Crosshair() => SpriteAsset("StoneAim", 64, (x, y) =>
+    {
+        float r = new Vector2(x, y).magnitude;
+        bool ring = r > 0.42f && r < 0.51f;
+        bool cross = (Mathf.Abs(x) < 0.045f && Mathf.Abs(y) > 0.25f && Mathf.Abs(y) < 0.85f) ||
+                     (Mathf.Abs(y) < 0.045f && Mathf.Abs(x) > 0.25f && Mathf.Abs(x) < 0.85f);
+        return new Color(1f, 1f, 1f, ring || cross ? 1f : 0f);
+    });
     private static Sprite SpriteAsset(string name, int size, Func<float, float, Color> pixel)
     {
         EnsureFolder(Folder + "/UI"); string path = Folder + "/UI/" + name + ".png";
@@ -56,7 +64,14 @@ internal static class JourneyWorldSetupUtility
         if (existing != null) return existing.gameObject;
         var go = new GameObject(name, components); Undo.RegisterCreatedObjectUndo(go, "Create " + name); go.transform.SetParent(parent, false); return go;
     }
-    internal static T Add<T>(GameObject go) where T : Component => go.GetComponent<T>() ?? Undo.AddComponent<T>(go);
+    internal static T Add<T>(GameObject go) where T : Component
+    {
+        // Missing Unity components can have an Editor placeholder rather than a CLR null.
+        T component = go.GetComponent<T>();
+        if (component == null) component = Undo.AddComponent<T>(go);
+        if (component == null) throw new InvalidOperationException("Could not add " + typeof(T).Name + " to " + go.name + ".");
+        return component;
+    }
     internal static void Dirty(UnityEngine.Object value)
     { if (value == null) return; EditorUtility.SetDirty(value); PrefabUtility.RecordPrefabInstancePropertyModifications(value); }
     internal static void Stretch(RectTransform rect)

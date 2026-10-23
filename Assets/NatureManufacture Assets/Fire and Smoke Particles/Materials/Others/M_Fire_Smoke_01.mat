@@ -22,6 +22,8 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: M_Fire_Smoke_01
   m_Shader: {fileID: 4800000, guid: aec3553a3f61b804da497aa2906ef148, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - EMISSION_PROCEDURAL_MASK_ON
   - USE_WIND_ON
@@ -36,13 +38,13 @@ Material:
     MotionVector: User
     RenderType: Transparent
   disabledShaderPasses:
-  - MOTIONVECTORS
+  - SHADOWCASTER
   - TransparentBackface
   - TransparentDepthPostpass
   - RayTracingPrepass
   - TransparentDepthPrepass
   - DepthOnly
-  - SHADOWCASTER
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -446,6 +448,7 @@ Material:
     - _UVMappingMask: {r: 1, g: 0, b: 0, a: 0}
     - _UVMappingMaskEmissive: {r: 1, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!114 &1318547827804343616
 MonoBehaviour:
   m_ObjectHideFlags: 11
