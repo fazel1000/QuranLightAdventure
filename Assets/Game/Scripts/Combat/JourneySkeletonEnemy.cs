@@ -11,6 +11,15 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     public BoxCollider patrolArea;
     public Animator modelAnimator;
     [Header("Patrol and chase")]
+    [Tooltip("Optional ordered route. Keep the points outside the moving enemy, e.g. under a sibling Patrol Route object.")]
+    public Transform[] patrolPoints = new Transform[0];
+    public bool loopPatrol = true;
+    [Min(0.5f)] public float routePadding = 4f;
+    public bool useDistanceDetection = true;
+    [Min(0.5f)] public float detectionDistance = 8f;
+    [Min(0.5f)] public float loseTargetDistance = 14f;
+    [Tooltip("Far enemies stop navigation and Animator evaluation; they resume when the player returns.")]
+    [Min(10f)] public float sleepDistance = 60f;
     [Min(0f)] public float chaseExtraDistance = 10f;
     [Min(0.1f)] public float patrolSpeed = 1.5f;
     [Min(0.1f)] public float chaseSpeed = 3f;
@@ -62,6 +71,9 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     private bool ready, attacking, attackHitDone, attackObserved, pausedAnimation;
     private float nextThink, waitUntil, nextAttack, attackStarted, savedAnimatorSpeed;
     private string currentAnimation;
+    private int routeIndex, routeDirection = 1;
+    private bool routeTravelling, sleeping, animatorBeforeSleep;
+    private bool HasRoute => patrolPoints != null && System.Array.Exists(patrolPoints, point => point != null);
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics() { enemies.Clear(); }
@@ -70,14 +82,16 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         if (playerCombat == null) playerCombat = FindFirstObjectByType<JourneyPlayerCombat>();
-        if (patrolArea == null || modelAnimator == null || playerCombat == null)
-        { Fail("Assign Player Combat, Patrol Area and Model Animator."); return; }
-        if (patrolArea.transform.IsChildOf(transform))
+        if ((!HasRoute && patrolArea == null) || modelAnimator == null || playerCombat == null)
+        { Fail("Assign Player Combat, Model Animator, and Patrol Points or a Patrol Area."); return; }
+        if (patrolArea != null && patrolArea.transform.IsChildOf(transform))
         { Fail("Patrol Area must not move with the enemy."); return; }
-        if (Vector3.Dot(patrolArea.transform.up, Vector3.up) < 0.999f)
+        if (patrolArea != null && Vector3.Dot(patrolArea.transform.up, Vector3.up) < 0.999f)
         { Fail("Patrol Area may rotate around Y only; keep X and Z rotation zero."); return; }
+        if (HasRoute && System.Array.Exists(patrolPoints, point => point != null && point.IsChildOf(transform)))
+        { Fail("Patrol Points must be outside the moving enemy hierarchy. Use a sibling Patrol Route."); return; }
         if (!agent.isOnNavMesh || OutsideDistance(transform.position) > 0.01f)
-        { Fail("Place this enemy on the baked NavMesh INSIDE its Patrol Area before Play."); return; }
+        { Fail("Place this enemy on the baked NavMesh inside its Patrol Points bounds or Patrol Area before Play."); return; }
         foreach (string state in new[] { "Idle", "Run", "Attack", "Death" })
             if (!modelAnimator.HasState(0, Animator.StringToHash("Base Layer." + state)))
             { Fail("Run Setup Journey Combat to create the Skeleton controller."); return; }
@@ -93,6 +107,7 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
         }
         path = new NavMeshPath();
         home = lastSafe = transform.position;
+        routeIndex = NearestRoutePoint();
         agent.autoBraking = true;
         agent.autoTraverseOffMeshLink = false;
         agent.autoRepath = false;
@@ -113,6 +128,15 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
         // The non-looping Death state holds its final pose. Keep the model active.
         // Navigation, combat and colliders were already disabled on death.
         if (IsDead) return;
+        bool distant = Vector3.SqrMagnitude(playerCombat.BodyPoint - transform.position) > sleepDistance * sleepDistance;
+        if (distant)
+        {
+            StopAgent(true);
+            if (!sleeping) { if (attacking) FinishAttack(); sleeping = true; animatorBeforeSleep = modelAnimator.enabled; modelAnimator.enabled = false; }
+            return;
+        }
+        if (sleeping)
+        { sleeping = false; modelAnimator.enabled = animatorBeforeSleep; currentAnimation = null; nextThink = 0f; routeTravelling = false; }
         if (!agent.enabled || !agent.isOnNavMesh) return;
         // Avoidance may deviate from a valid path: enforce the same geometric leash.
         float allowance = mode == Mode.Patrol ? 0f : chaseExtraDistance;
@@ -125,7 +149,8 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
         else lastSafe = transform.position;
 
         // Test exit every frame, so an attack cannot land after the player leaves the leash.
-        if (mode == Mode.Chase && OutsideDistance(playerCombat.BodyPoint) > chaseExtraDistance)
+        if (mode == Mode.Chase && (OutsideDistance(playerCombat.BodyPoint) > chaseExtraDistance ||
+            useDistanceDetection && FlatDistance(transform.position, playerCombat.BodyPoint) > Mathf.Max(detectionDistance + 1f, loseTargetDistance)))
             ReturnHome();
         if (attacking && !playerCombat.GameplayActive) FinishAttack();
         if (attacking) { UpdateAttack(); return; }
@@ -139,10 +164,12 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
 
     private void Think()
     {
+        if (mode == Mode.Return && PlayerInside()) { mode = Mode.Chase; Chase(); return; }
         if (mode == Mode.Patrol)
         {
             if (PlayerInside()) { mode = Mode.Chase; Chase(); return; }
             agent.speed = patrolSpeed;
+            if (HasRoute) { PatrolRoute(); return; }
             if (agent.hasPath && agent.remainingDistance > agent.stoppingDistance + 0.15f)
             { agent.isStopped = false; return; }
             StopAgent(true);
@@ -168,10 +195,51 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
             {
                 StopAgent(true);
                 mode = Mode.Patrol;
+                routeIndex = NearestRoutePoint(); routeTravelling = false;
                 waitUntil = Time.time + patrolWait;
                 return;
             }
             if (!TryPath(home, chaseExtraDistance)) StopAgent(true);
+        }
+    }
+    private void PatrolRoute()
+    {
+        if (agent.pathPending) return;
+        if (routeTravelling)
+        {
+            if (agent.hasPath && agent.remainingDistance > agent.stoppingDistance + 0.2f) { agent.isStopped = false; return; }
+            routeTravelling = false; StopAgent(true); AdvanceRoutePoint(); waitUntil = Time.time + patrolWait; return;
+        }
+        if (Time.time < waitUntil) return;
+        for (int attempt = 0; attempt < patrolPoints.Length; attempt++)
+        {
+            Transform point = patrolPoints[Mathf.Clamp(routeIndex, 0, patrolPoints.Length - 1)];
+            if (point != null && TryPath(point.position, 0f)) { routeTravelling = true; return; }
+            AdvanceRoutePoint();
+        }
+        waitUntil = Time.time + Mathf.Max(0.3f, patrolWait);
+    }
+    private int NearestRoutePoint()
+    {
+        int best = 0; float distance = float.PositiveInfinity;
+        if (patrolPoints == null) return best;
+        for (int i = 0; i < patrolPoints.Length; i++)
+        {
+            if (patrolPoints[i] == null) continue;
+            float next = Vector3.SqrMagnitude(patrolPoints[i].position - transform.position);
+            if (next < distance) { best = i; distance = next; }
+        }
+        return best;
+    }
+    private void AdvanceRoutePoint()
+    {
+        if (patrolPoints.Length <= 1) { routeIndex = 0; return; }
+        if (loopPatrol) routeIndex = (routeIndex + 1) % patrolPoints.Length;
+        else
+        {
+            routeIndex += routeDirection;
+            if (routeIndex >= patrolPoints.Length) { routeDirection = -1; routeIndex = patrolPoints.Length - 2; }
+            else if (routeIndex < 0) { routeDirection = 1; routeIndex = 1; }
         }
     }
 
@@ -297,6 +365,8 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     public void ReceiveSwordHit(JourneyPlayerCombat source)
     {
         if (!ready || IsDead || source != playerCombat || !source.GameplayActive) return;
+        if (sleeping)
+        { sleeping = false; modelAnimator.enabled = animatorBeforeSleep; currentAnimation = null; nextThink = 0f; routeTravelling = false; }
         receivedHits++;
         if (effectsSource != null && hitSound != null) effectsSource.PlayOneShot(hitSound);
         if (receivedHits < Mathf.Max(1, swordHitsToDie)) return;
@@ -315,6 +385,7 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
         if (!ready || IsDead) return;
         mode = Mode.Return;
         attacking = false;
+        routeTravelling = false;
         nextAttack = Time.time + attackCooldown;
         nextThink = 0f;
         StopAgent(true);
@@ -324,6 +395,16 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     // Y is deliberately ignored for the 10m leash; entry also tests the box's height.
     public float OutsideDistance(Vector3 worldPoint)
     {
+        if (HasRoute)
+        {
+            Bounds bounds = new Bounds(home, Vector3.zero); bool found = false;
+            foreach (var point in patrolPoints)
+            { if (point == null) continue; if (!found) { bounds = new Bounds(point.position, Vector3.zero); found = true; } else bounds.Encapsulate(point.position); }
+            bounds.Expand(routePadding * 2f);
+            Vector3 closest = bounds.ClosestPoint(worldPoint); closest.y = worldPoint.y;
+            return Vector3.Distance(closest, worldPoint);
+        }
+        if (patrolArea == null) return FlatDistance(worldPoint, home);
         Vector3 local = patrolArea.transform.InverseTransformPoint(worldPoint) - patrolArea.center;
         Vector3 half = patrolArea.size * 0.5f;
         Vector3 nearest = new Vector3(Mathf.Clamp(local.x, -half.x, half.x), local.y,
@@ -335,6 +416,10 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
 
     private bool PlayerInside()
     {
+        if (useDistanceDetection)
+            return playerCombat.GameplayActive && FlatDistance(transform.position, playerCombat.BodyPoint) <= detectionDistance &&
+                OutsideDistance(playerCombat.BodyPoint) <= chaseExtraDistance && playerCombat.HasClearLine(HitPoint, playerCombat.HitPoint, transform);
+        if (patrolArea == null) return false;
         Vector3 local = patrolArea.transform.InverseTransformPoint(playerCombat.BodyPoint) - patrolArea.center;
         Vector3 half = patrolArea.size * 0.5f;
         return Mathf.Abs(local.x) <= half.x && Mathf.Abs(local.y) <= half.y && Mathf.Abs(local.z) <= half.z;
@@ -371,6 +456,7 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
     }
     private void PlayAnimation(string state, bool force = false)
     {
+        if (modelAnimator == null || !modelAnimator.isActiveAndEnabled) return;
         if (!force && currentAnimation == state) return;
         currentAnimation = state;
         modelAnimator.CrossFadeInFixedTime("Base Layer." + state, 0.1f, 0, 0f);
@@ -383,9 +469,18 @@ public sealed class JourneySkeletonEnemy : MonoBehaviour
         pausedAnimation = pause;
     }
     private void Fail(string message) { Debug.LogError("JourneySkeletonEnemy: " + message, this); enabled = false; }
-    private void OnDisable() { enemies.Remove(this); StopAgent(true); PauseAnimation(false); }
+    private void OnDisable()
+    { enemies.Remove(this); StopAgent(true); if (sleeping && modelAnimator != null) modelAnimator.enabled = animatorBeforeSleep; sleeping = false; PauseAnimation(false); }
     private void OnDrawGizmosSelected()
     {
+        Gizmos.color = new Color(1f, 0.7f, 0.1f, 0.8f); Gizmos.DrawWireSphere(transform.position, detectionDistance);
+        if (patrolPoints != null)
+        {
+            Gizmos.color = Color.cyan; Transform previousPatrolPoint = null;
+            foreach (var point in patrolPoints)
+            { if (point == null) continue; Gizmos.DrawWireSphere(point.position, 0.2f); if (previousPatrolPoint != null) Gizmos.DrawLine(previousPatrolPoint.position, point.position); previousPatrolPoint = point; }
+            if (loopPatrol && previousPatrolPoint != null && patrolPoints.Length > 1 && patrolPoints[0] != null) Gizmos.DrawLine(previousPatrolPoint.position, patrolPoints[0].position);
+        }
         if (bladeBase != null && bladeTip != null)
         {
             Gizmos.color = Color.yellow;

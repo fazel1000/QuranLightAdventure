@@ -117,13 +117,16 @@ public sealed class JourneyMenuController : MonoBehaviour
 
     private void LateUpdate()
     {
+        // Gameplay also uses absolute UI positions for the joystick, camera drag
+        // and radial button. A locked cursor prevents desktop UI raycasts.
+        Cursor.lockState = CursorLockMode.None;
+#if UNITY_EDITOR || UNITY_STANDALONE
+        Cursor.visible = true;
+#else
+        Cursor.visible = false;
+#endif
         if (!IsMenuOpen) return;
         RefreshMenuMusicContext();
-
-        // GC's existing On Start currently locks the cursor. UI input needs
-        // finite screen coordinates, so menus must keep that cursor unlocked.
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = false;
 
         BlockPlayerControl();
 

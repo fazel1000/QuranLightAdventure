@@ -127,7 +127,7 @@ public class LightBrushPuzzle : MonoBehaviour
     private bool[] playablePuzzles;
     private int playablePuzzleCount;
     public int TotalScore { get; private set; }
-    public int TotalCoins => TotalScore;
+    public int TotalCoins => JourneyCoinWallet.Balance;
     public int SolvedPuzzleCount { get; private set; }
     public bool IsAllPuzzlesCompleted => IsSequenceCompleted;
     private readonly List<GameObject> transientEffects = new List<GameObject>();
@@ -153,7 +153,7 @@ public class LightBrushPuzzle : MonoBehaviour
 
     private void UpdateMovementBlock()
     {
-        if (!configurationValid || !inputFocused || inputPaused)
+        if (!configurationValid || !inputFocused || inputPaused || JourneyRadialMenu.IsOpen)
         {
             ReleaseMovementBlock();
             return;
@@ -282,7 +282,7 @@ public class LightBrushPuzzle : MonoBehaviour
     {
         UpdateMovementBlock();
         AnimateLinePulse();
-        if (JourneyVoiceBoard.IsPointerCaptured || JourneyStoneThrowController.IsMovementBlocked || JourneyPlayerCombat.IsMovementBlocked)
+        if (JourneyRadialMenu.IsOpen || JourneyVoiceBoard.IsPointerCaptured || JourneyStoneThrowController.IsMovementBlocked || JourneyPlayerCombat.IsMovementBlocked)
         {
             if (drawing) ResetBrush();
             return;
@@ -380,11 +380,12 @@ public class LightBrushPuzzle : MonoBehaviour
         // Commit the result before invoking any external event: no duplicate awards.
         solvedPuzzles[finishedPuzzle] = true;
         SolvedPuzzleCount++;
-        TotalScore = (int)global::System.Math.Min(int.MaxValue,
-            (long)TotalScore + GetPuzzleScore(finishedPuzzle));
+        int reward = GetPuzzleScore(finishedPuzzle);
+        TotalScore = (int)global::System.Math.Min(int.MaxValue, (long)TotalScore + reward);
         IsSequenceCompleted = SolvedPuzzleCount == playablePuzzleCount;
         completed = IsSequenceCompleted;
         currentLetter = 0;
+        JourneyCoinWallet.Add(reward);
         RefreshScoreDisplay();
 
         onScoreChanged?.Invoke(TotalScore);
@@ -428,8 +429,8 @@ public class LightBrushPuzzle : MonoBehaviour
     {
         if (points <= 0) return;
         TotalScore = (int)global::System.Math.Min(int.MaxValue, (long)TotalScore + points);
-        RefreshScoreDisplay();
-        onScoreChanged?.Invoke(TotalScore);
+        JourneyCoinWallet.Add(points);
+        RefreshScoreDisplay(); onScoreChanged?.Invoke(TotalScore);
     }
 
     public void RefreshScoreDisplay()
@@ -440,7 +441,7 @@ public class LightBrushPuzzle : MonoBehaviour
             coinImage.raycastTarget = false;
         }
         if (coinCountText == null) return;
-        string number = TotalScore.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
+        string number = TotalCoins.ToString(global::System.Globalization.CultureInfo.InvariantCulture);
         if (usePersianDigits)
         {
             char[] digits = number.ToCharArray();
@@ -454,8 +455,10 @@ public class LightBrushPuzzle : MonoBehaviour
 
     private void OnEnable()
     {
+        JourneyCoinWallet.Changed += OnWalletChanged;
         RefreshScoreDisplay();
     }
+    private void OnWalletChanged() { RefreshScoreDisplay(); }
 
     private System.Collections.IEnumerator WaitForGameplaySeconds(float seconds)
     {
@@ -489,6 +492,7 @@ public class LightBrushPuzzle : MonoBehaviour
         solvedPuzzles = new bool[wordGroups.Length];
         connectedWordIndices = new int[wordGroups.Length];
         SolvedPuzzleCount = 0;
+        // Keep legacy per-run score separate from the saved, spendable wallet.
         TotalScore = 0;
         configurationValid = ValidateWords();
         if (configurationValid) ShowAllWords();
@@ -582,6 +586,7 @@ public class LightBrushPuzzle : MonoBehaviour
 
     private void OnDisable()
     {
+        JourneyCoinWallet.Changed -= OnWalletChanged;
         ReleaseMovementBlock();
         // Cancel a partial gesture when opening a menu; keep completed puzzle progress.
         if (!drawing) return;
@@ -1363,6 +1368,7 @@ public class LightBrushPuzzle : MonoBehaviour
 
     private void OnDestroy()
     {
+        JourneyCoinWallet.Changed -= OnWalletChanged;
         ReleaseMovementBlock();
         ClearTransientEffects();
         Destroy(glowMaterial);

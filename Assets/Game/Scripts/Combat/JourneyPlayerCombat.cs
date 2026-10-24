@@ -36,17 +36,23 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     [Range(0f, 1f)] public float defenseStart = 0.15f;
     [Range(0f, 1f)] public float defenseEnd = 0.85f;
     [Min(0f)] public float defenseCooldown = 0.15f;
+    [Header("Hold shield: raise, hold pose, lower on release")]
+    [Range(0.1f, 0.9f)] public float defenseHoldPose = 0.5f;
+    [Min(0.05f)] public float defenseRaiseSeconds = 0.25f;
+    [Min(0.05f)] public float defenseLowerSeconds = 0.2f;
     public AudioClip shieldBlockSound;
     public UnityEvent onShieldBlock = new UnityEvent();
     public bool IsDefending { get; private set; }
-    private bool defenseReady, observedDefense;
-    private float defenseStarted, nextDefenseAt;
+    private bool defenseReady;
+    private float nextDefenseAt;
     private int defenseRequestFrame;
+    private bool defenseHeld;
+    private float defensePose, automaticDefenseRelease = float.PositiveInfinity;
     public bool ShieldActive
     {
         get
         {
-            if (!IsDefending || !GameplayActive || playerAnimator == null ||
+            if (!IsDefending || !defenseHeld || !GameplayActive || playerAnimator == null ||
                 playerAnimator.runtimeAnimatorController != expectedController ||
                 !playerAnimator.isActiveAndEnabled || Time.frameCount <= defenseRequestFrame ||
                 shieldHitbox == null || !shieldHitbox.enabled || !shieldHitbox.gameObject.activeInHierarchy) return false;
@@ -104,7 +110,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     private void OnEnable()
     {
         if (attackButton != null) attackButton.onClick.AddListener(TryAttack);
-        if (defendButton != null) defendButton.onClick.AddListener(TryDefend);
+        EnsureShieldHoldInput();
     }
     private void Start()
     {
@@ -135,13 +141,27 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
         defenseReady = ready && defendButton != null && shieldHitbox != null && bodyHitbox != null && replacement.HasState(layer, Animator.StringToHash(DefenseState));
         return ready;
     }
+    public void RefreshEquipmentReferences()
+    {
+        defenseReady = ready && defendButton != null && shieldHitbox != null && bodyHitbox != null &&
+            playerAnimator != null && layer >= 0 && playerAnimator.HasState(layer, Animator.StringToHash(DefenseState));
+        if (!defenseReady || shieldHitbox == null || !shieldHitbox.gameObject.activeInHierarchy) EndDefense();
+    }
+    private void EnsureShieldHoldInput()
+    {
+        if (defendButton == null) return;
+        defendButton.onClick.RemoveListener(TryDefend);
+        var input = defendButton.GetComponent<JourneyShieldHoldInput>();
+        if (input == null) input = defendButton.gameObject.AddComponent<JourneyShieldHoldInput>();
+        input.combat = this;
+    }
 
     private void Update()
     {
         if (!ready) return;
         if (JourneyPlayerSwimming.IsSwimming) { EndDefense(); EndAttack(); }
         if (attackButton != null) attackButton.interactable = CanAttack();
-        if (defendButton != null) defendButton.interactable = CanDefend();
+        if (defendButton != null) defendButton.interactable = IsDefending || CanDefend();
         UpdateDefense();
         if (!IsAttacking) return;
         if (!GameplayActive || playerAnimator == null || !playerAnimator.isActiveAndEnabled ||
@@ -233,23 +253,30 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
             !LightBrushPuzzle.IsMovementBlocked && !JourneyVoiceBoard.IsPointerCaptured &&
             (stoneController == null || !stoneController.IsUsingStone) && playerAnimator != null &&
             playerAnimator.isActiveAndEnabled && playerAnimator.speed > 0f &&
-            playerAnimator.runtimeAnimatorController == expectedController;
+            playerAnimator.runtimeAnimatorController == expectedController && shieldHitbox != null &&
+            shieldHitbox.enabled && shieldHitbox.gameObject.activeInHierarchy;
     }
 
     public void TryDefend()
     {
-        if (!CanDefend()) return;
+        // Compatibility for an external tap event; the held Button uses Begin/Release.
+        if (BeginDefenseHold()) automaticDefenseRelease = Time.time + defenseRaiseSeconds + 0.1f;
+    }
+    public bool BeginDefenseHold()
+    {
+        if (!CanDefend()) return false;
         IsDefending = true;
+        defenseHeld = true; defensePose = 0f; automaticDefenseRelease = float.PositiveInfinity;
         activeAttacker = this;
-        observedDefense = false;
-        defenseStarted = Time.time;
         defenseRequestFrame = Time.frameCount;
         RightScreenDragArea.ClearInput();
         JourneyMovementSettings.RefreshPuzzleInput();
-        playerAnimator.SetFloat("JourneyShieldSpeed", Mathf.Max(0.1f, defenseSpeed));
+        playerAnimator.SetFloat("JourneyShieldSpeed", 0f);
         playerAnimator.SetLayerWeight(layer, 0f);
         playerAnimator.Play(DefenseState, layer, 0f);
+        return true;
     }
+    public void ReleaseDefenseHold() { defenseHeld = false; automaticDefenseRelease = float.PositiveInfinity; }
 
     private void UpdateDefense()
     {
@@ -257,24 +284,28 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
         if (!GameplayActive || playerAnimator == null || !playerAnimator.isActiveAndEnabled ||
             playerAnimator.runtimeAnimatorController != expectedController)
         { EndDefense(); return; }
-        if (Time.frameCount <= defenseRequestFrame) return;
-        var state = playerAnimator.GetCurrentAnimatorStateInfo(layer);
-        if (state.IsName(DefenseState))
-        {
-            observedDefense = true;
-            float t = state.normalizedTime;
-            playerAnimator.SetLayerWeight(layer, Mathf.Min(Mathf.Clamp01(t / 0.06f), Mathf.Clamp01((1f - t) / 0.08f)));
-            if (t >= 1f) EndDefense();
-        }
-        else if (observedDefense || Time.time - defenseStarted > 0.75f) EndDefense();
-        if (IsDefending && Time.time - defenseStarted > 15f) EndDefense();
+        if (Time.time >= automaticDefenseRelease) defenseHeld = false;
+        float hold = Mathf.Clamp(defenseHoldPose, Mathf.Clamp01(defenseStart + 0.01f), Mathf.Max(defenseStart + 0.01f, defenseEnd));
+        float seconds = defenseHeld ? defenseRaiseSeconds : defenseLowerSeconds;
+        float next = Mathf.MoveTowards(defensePose, defenseHeld ? hold : 0f,
+            Time.deltaTime * hold * Mathf.Max(0.1f, defenseSpeed) / (0.65f * Mathf.Max(0.05f, seconds)));
+        playerAnimator.SetFloat("JourneyShieldSpeed", 0f);
+        if (!Mathf.Approximately(next, defensePose) || Time.frameCount <= defenseRequestFrame + 1)
+            playerAnimator.Play(DefenseState, layer, next);
+        defensePose = next;
+        playerAnimator.SetLayerWeight(layer, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(defensePose / 0.08f)));
+        if (!defenseHeld && defensePose <= 0.0001f) EndDefense();
     }
 
     private void EndDefense()
     {
         if (!IsDefending) return;
         if (playerAnimator != null && playerAnimator.runtimeAnimatorController == expectedController && layer >= 0)
+        {
+            playerAnimator.SetFloat("JourneyShieldSpeed", Mathf.Max(0.1f, defenseSpeed));
             playerAnimator.SetLayerWeight(layer, 0f);
+        }
+        defenseHeld = false; defensePose = 0f; automaticDefenseRelease = float.PositiveInfinity;
         IsDefending = false;
         if (activeAttacker == this) activeAttacker = null;
         nextDefenseAt = Time.time + Mathf.Max(0f, defenseCooldown);

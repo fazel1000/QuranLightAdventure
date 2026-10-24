@@ -222,6 +222,10 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
         hiddenUI.Clear();
     }
     public void FitPreviewCamera()
+    { FitPreviewCamera(false); }
+    public void RefitPreviewCameraPreserveAngle()
+    { FitPreviewCamera(true); }
+    private void FitPreviewCamera(bool preserveAngle)
     {
         Bounds bounds = new Bounds(preview.transform.position + Vector3.up, Vector3.zero);
         bool found = false;
@@ -236,8 +240,9 @@ public sealed class JourneyWardrobeRoom : MonoBehaviour
         float tangent = Mathf.Tan(previewCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
         float radius = Mathf.Sqrt(bounds.extents.x * bounds.extents.x + bounds.extents.z * bounds.extents.z);
         float distance = Mathf.Max(bounds.extents.y / tangent, radius / (tangent * aspect)) * 1.2f + radius;
-        previewCamera.transform.position = bounds.center + Vector3.forward * distance;
-        previewCamera.transform.LookAt(bounds.center);
+        if (preserveAngle) previewCamera.transform.position = bounds.center - previewCamera.transform.forward * distance;
+        else
+        { previewCamera.transform.position = bounds.center + Vector3.forward * distance; previewCamera.transform.LookAt(bounds.center); }
     }
     public void Close()
     {

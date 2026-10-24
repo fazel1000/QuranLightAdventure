@@ -38,7 +38,8 @@ public sealed class JourneyPlayerModelBindings : MonoBehaviour
     {
         if (stone != null) stone.CancelForRespawn();
         Detach(throwOrigin, HumanBodyBones.RightHand); Detach(handSocket, HumanBodyBones.RightHand);
-        if (shieldHitbox != null) Detach(shieldHitbox.transform, HumanBodyBones.LeftHand);
+        var equipment = player != null ? player.GetComponent<JourneyEquipmentInventory>() : null;
+        if (shieldHitbox != null && (equipment == null || !equipment.HasShieldItems)) Detach(shieldHitbox.transform, HumanBodyBones.LeftHand);
     }
     private void Detach(Transform item, HumanBodyBones bone)
     {
@@ -62,7 +63,10 @@ public sealed class JourneyPlayerModelBindings : MonoBehaviour
             if (throwOrigin == null) throwOrigin = NewSocket("ThrowOrigin", right, new Vector3(0f, 0f, 0.15f));
             else if (socketPoses.ContainsKey(throwOrigin)) AttachPreserved(throwOrigin, right, new Vector3(0f, 0f, 0.15f));
         }
-        if (left != null)
+        var equipment = player.GetComponent<JourneyEquipmentInventory>();
+        if (equipment != null && equipment.HasShieldItems)
+        { equipment.RefreshBindings(); shieldHitbox = equipment.EquippedShieldCollider; }
+        else if (left != null)
         {
             if (shieldHitbox == null)
             {
