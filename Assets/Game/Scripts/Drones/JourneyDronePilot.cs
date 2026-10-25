@@ -13,6 +13,7 @@ public sealed class JourneyDronePilot : MonoBehaviour
     public Camera viewCamera;
     public TCamera gameCreatorCamera;
     public LightBrushPuzzle coinReceiver;
+    public JourneyShuffleMusic gameplayMusic;
     public Button launchButton;
     public Sprite launchSprite;
     public Behaviour[] suspendWhileFlying;
@@ -23,6 +24,7 @@ public sealed class JourneyDronePilot : MonoBehaviour
     private JourneyDroneLauncher current, nearest;
     private bool active, cameraTaken, focus = true, appPaused;
     private bool characterWasEnabled, cameraWasEnabled;
+    private JourneyShuffleMusic pausedMusic;
     private Vector3 savedCameraPosition;
     private Quaternion savedCameraRotation;
     private readonly Dictionary<Behaviour, bool> savedBehaviours = new Dictionary<Behaviour, bool>();
@@ -97,12 +99,15 @@ public sealed class JourneyDronePilot : MonoBehaviour
     private void Suspend(Behaviour item)
     {
         if (item == null || item == this || item == menu || item == player || item is JourneyMovementSettings ||
-            item is JourneySkeletonEnemy || savedBehaviours.ContainsKey(item)) return;
+            item is JourneySkeletonEnemy || item is JourneyShuffleMusic || savedBehaviours.ContainsKey(item)) return;
         savedBehaviours.Add(item, item.enabled); item.enabled = false;
     }
     private void TakeCamera()
     {
         cameraTaken = true;
+        if (gameplayMusic == null) gameplayMusic = FindFirstObjectByType<JourneyShuffleMusic>(FindObjectsInactive.Include);
+        pausedMusic = gameplayMusic;
+        if (pausedMusic != null) pausedMusic.SetExternalPause(this, true);
         // Return to the view chosen by the user during the launch delay.
         savedCameraPosition = viewCamera.transform.position; savedCameraRotation = viewCamera.transform.rotation;
         if (suspendWhileFlying != null) foreach (var item in suspendWhileFlying)
@@ -138,6 +143,8 @@ public sealed class JourneyDronePilot : MonoBehaviour
     }
     private void Restore()
     {
+        if (pausedMusic != null) pausedMusic.SetExternalPause(this, false);
+        pausedMusic = null;
         if (!active) return;
         active = false; JourneyRideSession.Release(this);
         if (current != null) current.SetPaused(false);

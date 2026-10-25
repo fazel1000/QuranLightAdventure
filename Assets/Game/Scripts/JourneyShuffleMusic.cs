@@ -19,6 +19,8 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
     public AudioClip CurrentTrack => musicSource != null ? musicSource.clip : null;
     public string CurrentTrackName => CurrentTrack != null ? CurrentTrack.name : "—";
     private readonly List<AudioClip> bag = new List<AudioClip>();
+    private readonly HashSet<UnityEngine.Object> pauseOwners = new HashSet<UnityEngine.Object>();
+    private readonly Dictionary<UnityEngine.Object, float> volumeMultipliers = new Dictionary<UnityEngine.Object, float>();
     private int currentIndex = -1;
     private const string VolumeKey = "JourneyOfLight.MusicVolume";
     private bool playlistBuilt, started, pausedByUs, appPaused;
@@ -28,18 +30,23 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
         if (musicSource == null) musicSource = GetComponent<AudioSource>();
         musicSource.playOnAwake = false; musicSource.loop = false; musicSource.spatialBlend = 0f;
         volume = Mathf.Clamp01(PlayerPrefs.GetFloat(VolumeKey, volume));
-        musicSource.volume = volume; musicSource.Stop();
+        ApplyOutputVolume(); musicSource.Stop();
         if (voiceService == null) voiceService = FindFirstObjectByType<JourneyVerseVoicePanel>(FindObjectsInactive.Include);
         if (menu == null) menu = FindFirstObjectByType<JourneyMenuController>(FindObjectsInactive.Include);
         Refill();
         if (bag.Count > 0) { currentIndex = 0; musicSource.clip = bag[0]; }
         Changed?.Invoke();
     }
-    private bool IsBlocked => UserPaused || !focus || appPaused || (voiceService != null && voiceService.IsAudioBusy) ||
+    private bool HasExternalPause
+    {
+        get { foreach (var owner in pauseOwners) if (owner != null) return true; return false; }
+    }
+    private bool IsBlocked => UserPaused || HasExternalPause || !focus || appPaused || (voiceService != null && voiceService.IsAudioBusy) ||
         (pauseInMenus && menu != null && !menu.IsGameplayActive && !(playInSettings && menu.IsSettingsOpen));
     private void Update()
     {
         if (musicSource == null) return;
+        ApplyOutputVolume();
         if (IsBlocked)
         { if (!pausedByUs || musicSource.isPlaying) { musicSource.Pause(); pausedByUs = true; } return; }
         if (pausedByUs) { musicSource.UnPause(); pausedByUs = false; }
@@ -49,10 +56,41 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
     public void SetVolume(float value)
     {
         volume = Mathf.Clamp01(value);
-        if (musicSource != null) musicSource.volume = volume;
+        ApplyOutputVolume();
         PlayerPrefs.SetFloat(VolumeKey, volume);
     }
     public void SaveVolume() => PlayerPrefs.Save();
+    public void SetExternalPause(UnityEngine.Object owner, bool paused)
+    {
+        if (ReferenceEquals(owner, null)) return;
+        if (paused && owner != null)
+        {
+            pauseOwners.Add(owner);
+            if (musicSource != null) { musicSource.Pause(); pausedByUs = true; }
+        }
+        else pauseOwners.Remove(owner);
+    }
+    public void SetVolumeMultiplier(UnityEngine.Object owner, float multiplier)
+    {
+        if (owner == null) return;
+        multiplier = Mathf.Clamp01(multiplier);
+        if (multiplier >= 1f) volumeMultipliers.Remove(owner);
+        else volumeMultipliers[owner] = multiplier;
+        ApplyOutputVolume();
+    }
+    public void ClearVolumeMultiplier(UnityEngine.Object owner)
+    {
+        if (ReferenceEquals(owner, null)) return;
+        volumeMultipliers.Remove(owner); ApplyOutputVolume();
+    }
+    private void ApplyOutputVolume()
+    {
+        if (musicSource == null) return;
+        float multiplier = 1f;
+        foreach (var request in volumeMultipliers)
+            if (request.Key != null) multiplier = Mathf.Min(multiplier, request.Value);
+        musicSource.volume = volume * multiplier;
+    }
     public void TogglePause() => SetUserPaused(!UserPaused);
     public void SetUserPaused(bool value)
     {
@@ -74,7 +112,7 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
     {
         if (musicSource == null || bag.Count == 0) return;
         if (currentIndex < 0) currentIndex = 0;
-        musicSource.Stop(); musicSource.clip = bag[currentIndex]; musicSource.volume = volume;
+        musicSource.Stop(); musicSource.clip = bag[currentIndex]; ApplyOutputVolume();
         musicSource.Play(); started = true; pausedByUs = IsBlocked;
         if (pausedByUs) musicSource.Pause();
         Changed?.Invoke();

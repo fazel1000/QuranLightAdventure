@@ -22,6 +22,9 @@ public sealed class JourneyThrowableStone : MonoBehaviour
     private JourneyStoneThrowController owner;
     private bool held, spent, thrown, initialized;
     private float flightAge;
+    private Vector3 previousPhysicsCenter;
+    private Vector3 PhysicsCenter => hitCollider is SphereCollider sphere
+        ? sphere.transform.TransformPoint(sphere.center) : hitCollider.bounds.center;
     public Vector3 LaunchPosition { get; private set; }
     public bool WasLaunchedBy(JourneyStoneThrowController controller) => thrown && owner == controller;
     public bool CanPickUp => initialized && isActiveAndEnabled && !held && !spent &&
@@ -33,7 +36,7 @@ public sealed class JourneyThrowableStone : MonoBehaviour
             if (hitCollider is SphereCollider sphere)
             {
                 Vector3 s = transform.lossyScale;
-                return sphere.radius * Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z));
+                return sphere.radius * Mathf.Max(Mathf.Abs(s.x), Mathf.Max(Mathf.Abs(s.y), Mathf.Abs(s.z)));
             }
             // Conservative preview radius for box/convex stone colliders.
             return hitCollider != null && hitCollider.enabled ? hitCollider.bounds.extents.magnitude : cachedRadius;
@@ -132,6 +135,7 @@ public sealed class JourneyThrowableStone : MonoBehaviour
         body.linearVelocity = velocity;
         body.angularVelocity = Random.onUnitSphere * 4f;
         body.WakeUp();
+        previousPhysicsCenter = PhysicsCenter;
         // Collision filtering is configured in Project Settings > Physics.
         // collisionLayers remains the controller's trajectory-preview mask.
     }
@@ -139,7 +143,14 @@ public sealed class JourneyThrowableStone : MonoBehaviour
     private void FixedUpdate()
     {
         if (!initialized || held) return;
-        if (thrown) flightAge += Time.fixedDeltaTime;
+        if (thrown)
+        {
+            flightAge += Time.fixedDeltaTime;
+            if (!spent && owner != null && owner.CanContinueFlight && owner.Target != null &&
+                owner.Target.TrySweepBonusSphere(previousPhysicsCenter, PhysicsCenter, Radius, out Vector3 bonusPoint))
+                TryScoreHit(owner.Target.BonusHitSphere, bonusPoint);
+        }
+        previousPhysicsCenter = PhysicsCenter;
         if (body.position.y < destroyBelowY)
         {
             destroying = true;
@@ -149,15 +160,28 @@ public sealed class JourneyThrowableStone : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (!thrown || spent || held || owner == null || !owner.CanContinueFlight) return;
-        JourneyStoneTower tower = collision.collider.GetComponentInParent<JourneyStoneTower>();
-        if (tower == null || tower != owner.Target) return;
         Vector3 hit = collision.contactCount > 0 ? collision.GetContact(0).point : body.position;
+        TryScoreHit(collision.collider, hit);
+        // Keep the rigidbody's natural bounce, roll and gravity after scoring.
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (owner == null || owner.Target == null || !owner.Target.IsBonusCollider(other)) return;
+        TryScoreHit(other, other.ClosestPoint(PhysicsCenter));
+    }
+    private void TryScoreHit(Collider other, Vector3 hit)
+    {
+        if (!thrown || spent || held || owner == null || !owner.CanContinueFlight) return;
+        JourneyStoneTower tower = other != null ? other.GetComponentInParent<JourneyStoneTower>() : null;
+        if (tower == null || tower != owner.Target) return;
+        // Give the bonus priority when trigger and solid contact callbacks
+        // arrive in the opposite order during the same simulation step.
+        if (!tower.IsBonusCollider(other) && !tower.ContainsBonusPoint(hit) &&
+            tower.TrySweepBonusSphere(previousPhysicsCenter, PhysicsCenter, Radius, out Vector3 bonusPoint))
+        { other = tower.BonusHitSphere; hit = bonusPoint; }
         // Mark before invoking events: multiple contacts can never award twice.
         spent = true;
-        if (!tower.TryAcceptHit(this, hit, owner, out _)) spent = false;
-        // Deliberately do not change position, velocity, damping or gravity on impact.
-        // The rigidbody falls, bounces, rolls and sleeps naturally with its material.
+        if (!tower.TryAcceptHit(this, hit, owner, other, out _)) spent = false;
     }
 
     public void ResetStone()
