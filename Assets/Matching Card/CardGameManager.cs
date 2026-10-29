@@ -1,526 +1,221 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
-using Assets._Scripts.FFF.InGame.TapAwayPuzzle.Managers;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
+[DisallowMultipleComponent, RequireComponent(typeof(AudioSource))]
 public class CardGameManager : MonoBehaviour
 {
-    [Header("Audio")]
+    [Header("Puzzle root and its 32 cards")]
+    public Transform cardsRoot;
+    public List<CardBehaviour> cards = new List<CardBehaviour>();
+    [Min(2)] public int requiredCardCount = 32;
+    public bool shuffleOnStart = true;
+    [SerializeField, Min(0f)] private float waitBeforeFlipBack = 1f;
+
+    [Header("Completion")]
+    [Min(0)] public int completionPoints = 500;
+    public LightBrushPuzzle scoreReceiver;
+    public AudioClip SuccessAudioClip;
+
+    [Header("Audio - dedicated puzzle effects source")]
     public AudioClip MatchAudioClip;
     public AudioClip NotMatchAudioClip;
     public AudioSource AudioMusic;
 
-    [Header("Cards Settings")]
-    [SerializeField]
-    private float flipDuration = 0.3f;
+    [Header("Touch and mouse")]
+    public Camera interactionCamera;
+    public GameCreator.Runtime.Characters.Character player;
+    public JourneyMenuController menu;
+    [Min(0.1f)] public float maxTouchDistance = 15f;
+    [Min(1f)] public float tapSlopPixels = 24f;
+    public bool IsComplete { get; private set; }
+    public int MatchedCards { get; private set; }
 
-    [SerializeField]
-    private float waitBeforeFlipBack = 1f;
-
-    [SerializeField]
-    private string[] validTags =
-    {
-        "1", "2", "3", "4",
-        "5", "6", "7", "8",
-        "9", "10", "11", "12",
-        "13", "14", "15", "16"
-    };
-
-    [Header("End Game Cube")]
-    public GameObject rewardCube;
-
-    [SerializeField]
-    private float rewardRotationDuration = 1f;
-
-    [Header("Timer UI")]
-    public TMP_Text timerText;
-
-    private float timer;
-    private bool timerRunning;
-
-    [Header("Leaderboard Reference")]
-    public LeaderboardManager leaderboardManager;
-
-    private GameObject firstCard;
-    private GameObject secondCard;
-
-    private bool canClick;
-    private bool gameOver;
-
-    private readonly List<GameObject> allCards =
-        new List<GameObject>();
-
-    private readonly List<Vector3> originalPositions =
-        new List<Vector3>();
+    private const int NoPointer = int.MinValue, MousePointer = -1;
+    private readonly List<RaycastResult> uiHits = new List<RaycastResult>();
+    private readonly RaycastHit[] rayHits = new RaycastHit[64];
+    private CardBehaviour firstCard, secondCard, pressedCard;
+    private int activePointer = NoPointer;
+    private Vector2 pressPosition;
+    private bool cancelledTap, initialized, checking, focused = true, appPaused;
+    private bool GameplayAllowed => focused && !appPaused && Time.timeScale > 0f &&
+        (menu == null || menu.IsGameplayActive) && !JourneyRideSession.IsOccupied &&
+        !JourneyRadialMenu.IsOpen && !LightBrushPuzzle.IsMovementBlocked;
 
     private void Awake()
     {
-        ResetTimer();
+        if (cardsRoot == null) cardsRoot = transform;
+        if (AudioMusic == null) AudioMusic = GetComponent<AudioSource>();
+        if (menu == null) menu = FindFirstObjectByType<JourneyMenuController>(FindObjectsInactive.Include);
+        if (scoreReceiver == null) scoreReceiver = FindFirstObjectByType<LightBrushPuzzle>(FindObjectsInactive.Include);
+        if (player == null)
+            foreach (var character in FindObjectsByType<GameCreator.Runtime.Characters.Character>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (character.IsPlayer && character.gameObject.scene == gameObject.scene) { player = character; break; }
     }
-
-    private void OnEnable()
-    {
-        PickupAndPlaceWithEffect.OnOnionPlaced +=
-            OnOnionPlacedHandler;
-
-        Manager_TapAway.OnFirstCellRemoved +=
-            OnFirstTapAwayCellRemoved;
-
-        Manager_TapAway.OnPuzzleReset +=
-            OnTapAwayPuzzleReset;
-    }
-
     private void Start()
     {
-        FindAllCards();
-        ShuffleCardPositions();
-
-        canClick =
-            PickupAndPlaceWithEffect.OnionPlaced;
+        if (cards.Count == 0) cards.AddRange(cardsRoot.GetComponentsInChildren<CardBehaviour>(true));
+        if (!ValidateConfiguration(out string error))
+        { Debug.LogError("Matching Card: " + error, this); return; }
+        foreach (var card in cards) card.ResetCard();
+        if (shuffleOnStart) ShuffleCardPositions();
+        initialized = true;
     }
-
-    private void OnDisable()
+    public bool ValidateConfiguration(out string error)
     {
-        PickupAndPlaceWithEffect.OnOnionPlaced -=
-            OnOnionPlacedHandler;
-
-        Manager_TapAway.OnFirstCellRemoved -=
-            OnFirstTapAwayCellRemoved;
-
-        Manager_TapAway.OnPuzzleReset -=
-            OnTapAwayPuzzleReset;
+        error = null;
+        if (requiredCardCount < 2 || requiredCardCount % 2 != 0 || cards.Count != requiredCardCount)
+        { error = "Assign exactly " + requiredCardCount + " cards. Cube.032 is not a card. Run Quran Kids > Setup Matching Card Puzzle."; return false; }
+        var unique = new HashSet<CardBehaviour>(); var pairs = new Dictionary<int, int>();
+        Transform root = cardsRoot != null ? cardsRoot : transform;
+        foreach (var card in cards)
+        {
+            if (card == null || !unique.Add(card) || !card.transform.IsChildOf(root) || card.pairId < 1)
+            { error = "Cards must be distinct children of this puzzle and each needs a positive Pair Id."; return false; }
+            pairs.TryGetValue(card.pairId, out int count); pairs[card.pairId] = count + 1;
+        }
+        foreach (var pair in pairs)
+            if (pair.Value != 2) { error = "Pair Id " + pair.Key + " must appear on exactly two cards, but appears on " + pair.Value + "."; return false; }
+        return true;
     }
-
+    private void ShuffleCardPositions()
+    {
+        var positions = new Vector3[cards.Count];
+        for (int i = 0; i < cards.Count; i++) positions[i] = cardsRoot.InverseTransformPoint(cards[i].transform.position);
+        for (int i = positions.Length - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1); Vector3 saved = positions[i]; positions[i] = positions[j]; positions[j] = saved;
+        }
+        for (int i = 0; i < cards.Count; i++) cards[i].transform.position = cardsRoot.TransformPoint(positions[i]);
+        Physics.SyncTransforms();
+    }
     private void Update()
     {
-        /*
-         * تایمر باید حتی زمانی که هنوز پیاز
-         * در OnionSlot قرار نگرفته ادامه پیدا کند.
-         */
-        if (timerRunning && !gameOver)
-        {
-            timer += Time.deltaTime;
-            UpdateTimerUI();
-        }
-
-        if (!canClick || gameOver)
-        {
-            return;
-        }
-
-        if (!Input.GetMouseButtonDown(0))
-        {
-            return;
-        }
-
-        Camera mainCamera = Camera.main;
-
-        if (mainCamera == null)
-        {
-            return;
-        }
-
-        Ray ray = mainCamera.ScreenPointToRay(
-            Input.mousePosition
-        );
-
-        if (!Physics.Raycast(
-                ray,
-                out RaycastHit hit))
-        {
-            return;
-        }
-
-        GameObject clickedCard =
-            hit.collider.gameObject;
-
-        if (!IsValidTag(clickedCard.tag))
-        {
-            return;
-        }
-
-        if (
-            clickedCard == firstCard ||
-            clickedCard == secondCard)
-        {
-            return;
-        }
-
-        CardBehaviour card =
-            clickedCard.GetComponent<CardBehaviour>();
-
-        if (card == null || card.isFlipped)
-        {
-            return;
-        }
-
-        /*
-         * شروع تایمر از کلیک کارت حذف شده است.
-         * تایمر فقط از رویداد اولین حذف سلول
-         * TapAway شروع می‌شود.
-         */
-
-        StartCoroutine(
-            card.Flip(true)
-        );
-
-        if (firstCard == null)
-        {
-            firstCard = clickedCard;
-        }
-        else if (secondCard == null)
-        {
-            secondCard = clickedCard;
-            canClick = false;
-
-            StartCoroutine(
-                CheckMatch()
-            );
-        }
-    }
-
-    private void FindAllCards()
-    {
-        allCards.Clear();
-        originalPositions.Clear();
-
-        GameObject[] sceneObjects =
-            GameObject.FindObjectsOfType<GameObject>();
-
-        foreach (GameObject cardObject in sceneObjects)
-        {
-            if (
-                IsValidTag(cardObject.tag) &&
-                cardObject.GetComponent<CardBehaviour>() != null)
+        if (!initialized || IsComplete || checking || !GameplayAllowed) { CancelTap(); return; }
+        bool touchUsed = false, observedPointer = false;
+        if (Touchscreen.current != null)
+            foreach (var touch in Touchscreen.current.touches)
             {
-                allCards.Add(cardObject);
-
-                originalPositions.Add(
-                    cardObject.transform.position
-                );
+                bool held = touch.press.isPressed, released = touch.press.wasReleasedThisFrame;
+                if (!held && !released) continue;
+                touchUsed = true;
+                int id = touch.touchId.ReadValue(); Vector2 position = touch.position.ReadValue();
+                if (touch.press.wasPressedThisFrame) BeginTap(id, position);
+                if (activePointer != id) continue;
+                observedPointer = true; ContinueTap(position);
+                if (released) EndTap(id, position);
             }
-        }
+        if (activePointer != NoPointer && activePointer != MousePointer && !observedPointer) CancelTap();
+        var mouse = Mouse.current;
+        if (touchUsed || mouse == null) { if (activePointer == MousePointer) CancelTap(); return; }
+        Vector2 mousePosition = mouse.position.ReadValue();
+        if (mouse.leftButton.wasPressedThisFrame) BeginTap(MousePointer, mousePosition);
+        if (activePointer != MousePointer) return;
+        ContinueTap(mousePosition);
+        if (mouse.leftButton.wasReleasedThisFrame) EndTap(MousePointer, mousePosition);
+        else if (!mouse.leftButton.isPressed) CancelTap();
     }
-
-    private void OnFirstTapAwayCellRemoved()
+    private void BeginTap(int pointer, Vector2 position)
     {
-        if (gameOver || timerRunning)
-        {
-            return;
-        }
-
-        timer = 0f;
-        timerRunning = true;
-
-        UpdateTimerUI();
-
-        if (timerText != null)
-        {
-            timerText.gameObject.SetActive(true);
-        }
-
-        Debug.Log(
-            "Game timer started after the first TapAway cell removal."
-        );
+        if (activePointer != NoPointer || IsOverUI(position)) return;
+        CardBehaviour card = HitCard(position);
+        if (!CanSelectCard(card)) return;
+        activePointer = pointer; pressedCard = card; pressPosition = position; cancelledTap = false;
     }
-
-    private void OnTapAwayPuzzleReset()
+    private void ContinueTap(Vector2 position)
+    { if ((position - pressPosition).sqrMagnitude > tapSlopPixels * tapSlopPixels) cancelledTap = true; }
+    private void EndTap(int pointer, Vector2 position)
     {
-        if (gameOver)
-        {
-            return;
-        }
-
-        ResetTimer();
-
-        Debug.Log(
-            "Game timer reset because the TapAway puzzle was reset."
-        );
+        if (pointer != activePointer) return;
+        CardBehaviour card = pressedCard;
+        bool valid = !cancelledTap && !IsOverUI(position) && HitCard(position) == card;
+        CancelTap();
+        if (valid && GameplayAllowed && CanSelectCard(card)) SelectCard(card);
     }
-
-    private void ResetTimer()
+    private void CancelTap() { activePointer = NoPointer; pressedCard = null; cancelledTap = false; }
+    private CardBehaviour HitCard(Vector2 position)
     {
-        timer = 0f;
-        timerRunning = false;
-
-        if (timerText == null)
+        Camera view = interactionCamera != null ? interactionCamera : Camera.main;
+        if (view == null) return null;
+        Ray ray = view.ScreenPointToRay(position); RaycastHit[] results = rayHits;
+        int count = Physics.RaycastNonAlloc(ray, results, maxTouchDistance, ~0, QueryTriggerInteraction.Ignore);
+        if (count == results.Length)
+        { results = Physics.RaycastAll(ray, maxTouchDistance, ~0, QueryTriggerInteraction.Ignore); count = results.Length; }
+        RaycastHit nearest = default; float distance = float.PositiveInfinity;
+        for (int i = 0; i < count; i++)
         {
-            return;
+            RaycastHit hit = results[i];
+            if (hit.collider == null || hit.distance >= distance || (player != null && hit.collider.transform.IsChildOf(player.transform))) continue;
+            nearest = hit; distance = hit.distance;
         }
-
-        timerText.text = "00:00";
-        timerText.gameObject.SetActive(false);
+        if (nearest.collider == null) return null;
+        var card = nearest.collider.GetComponentInParent<CardBehaviour>();
+        return card != null && cards.Contains(card) ? card : null;
     }
-
-    private void OnOnionPlacedHandler()
+    private bool IsOverUI(Vector2 position)
     {
-        if (!gameOver)
-        {
-            canClick = true;
-        }
+        if (EventSystem.current == null) return false;
+        uiHits.Clear(); EventSystem.current.RaycastAll(new PointerEventData(EventSystem.current) { position = position }, uiHits);
+        foreach (var hit in uiHits)
+            if (hit.module is GraphicRaycaster && (hit.gameObject.GetComponentInParent<Selectable>() != null ||
+                hit.gameObject.GetComponentInParent<GameCreator.Runtime.Common.TTouchStick>() != null)) return true;
+        return false;
     }
-
-    private IEnumerator CheckMatch()
+    private bool CanSelectCard(CardBehaviour card) => initialized && !checking && !IsComplete && card != null && card.isActiveAndEnabled && !card.isFlipped &&
+        !card.IsLocked && !card.IsAnimating && card != firstCard && card != secondCard;
+    private void SelectCard(CardBehaviour card)
     {
-        yield return new WaitForSeconds(
-            flipDuration
-        );
-
-        CardBehaviour card1 =
-            firstCard.GetComponent<CardBehaviour>();
-
-        CardBehaviour card2 =
-            secondCard.GetComponent<CardBehaviour>();
-
-        if (firstCard.tag == secondCard.tag)
+        if (firstCard == null) { firstCard = card; StartCoroutine(card.Flip(true)); return; }
+        secondCard = card; checking = true; StartCoroutine(CheckMatch(firstCard, secondCard));
+    }
+    private IEnumerator CheckMatch(CardBehaviour a, CardBehaviour b)
+    {
+        yield return b.Flip(true);
+        while (a != null && b != null && (a.IsAnimating || b.IsAnimating)) yield return null;
+        while (a != null && b != null && !GameplayAllowed) yield return null;
+        if (a == null || b == null || !a.isActiveAndEnabled || !b.isActiveAndEnabled)
+        { ClearUnmatchedSelection(); yield break; }
+        if (a.pairId == b.pairId)
         {
-            if (
-                AudioMusic != null &&
-                MatchAudioClip != null)
-            {
-                AudioMusic.PlayOneShot(
-                    MatchAudioClip
-                );
-            }
-
-            card1.Lock();
-            card2.Lock();
+            a.Lock(); b.Lock(); MatchedCards += 2;
+            if (MatchedCards == requiredCardCount) CompletePuzzle();
+            else PlaySound(MatchAudioClip);
         }
         else
         {
-            yield return new WaitForSeconds(
-                waitBeforeFlipBack
-            );
-
-            if (
-                AudioMusic != null &&
-                NotMatchAudioClip != null)
-            {
-                AudioMusic.PlayOneShot(
-                    NotMatchAudioClip
-                );
-            }
-
-            StartCoroutine(
-                card1.Flip(false)
-            );
-
-            StartCoroutine(
-                card2.Flip(false)
-            );
+            PlaySound(NotMatchAudioClip);
+            yield return new WaitForSeconds(Mathf.Max(0f, waitBeforeFlipBack));
+            if (a != null) StartCoroutine(a.Flip(false));
+            if (b != null) yield return b.Flip(false);
+            while (a != null && a.IsAnimating) yield return null;
         }
-
-        firstCard = null;
-        secondCard = null;
-        canClick = true;
-
-        if (!CheckAllMatched())
-        {
-            yield break;
-        }
-
-        timerRunning = false;
-        gameOver = true;
-        canClick = false;
-
-        yield return new WaitForSeconds(1f);
-
-        StartCoroutine(
-            SpinRewardCube()
-        );
-
-        if (timerText != null)
-        {
-            timerText.gameObject.SetActive(false);
-        }
-
-        SubmitRecordIfPlayerInfoIsValid();
+        firstCard = null; secondCard = null; checking = false;
     }
-
-    private void SubmitRecordIfPlayerInfoIsValid()
+    private void CompletePuzzle()
     {
-        string enteredName =
-            MainMenuController.playerName?.Trim();
-
-        string enteredCountry =
-            MainMenuController.playerCountry?.Trim();
-
-        bool nameIsValid =
-            !string.IsNullOrWhiteSpace(enteredName) &&
-            !string.Equals(
-                enteredName,
-                "Player",
-                StringComparison.OrdinalIgnoreCase
-            );
-
-        bool countryIsValid =
-            !string.IsNullOrWhiteSpace(enteredCountry) &&
-            !string.Equals(
-                enteredCountry,
-                "Unknown",
-                StringComparison.OrdinalIgnoreCase
-            );
-
-        if (!nameIsValid || !countryIsValid)
-        {
-            Debug.Log(
-                "Record was not submitted: " +
-                "player name and country are required."
-            );
-
-            return;
-        }
-
-        if (leaderboardManager == null)
-        {
-            Debug.LogWarning(
-                "Record was not submitted: " +
-                "LeaderboardManager is not assigned."
-            );
-
-            return;
-        }
-
-        leaderboardManager.SubmitScore(
-            enteredName,
-            enteredCountry,
-            timer
-        );
-
-        Debug.Log(
-            "Record submitted for: " +
-            enteredName + " - " +
-            enteredCountry +
-            " | Time: " +
-            timer
-        );
+        if (IsComplete || cards.Count != requiredCardCount) return;
+        foreach (var card in cards) if (card == null || !card.IsLocked) return;
+        IsComplete = true;
+        int points = Mathf.Max(0, completionPoints);
+        if (scoreReceiver != null) scoreReceiver.AddCoins(points);
+        else JourneyCoinWallet.Add(points);
+        PlaySound(SuccessAudioClip != null ? SuccessAudioClip : MatchAudioClip);
     }
-
-    private bool CheckAllMatched()
+    private void PlaySound(AudioClip clip)
+    { if (AudioMusic != null && clip != null) AudioMusic.PlayOneShot(clip); }
+    private void ClearUnmatchedSelection()
     {
-        foreach (GameObject cardObject in allCards)
-        {
-            CardBehaviour card =
-                cardObject.GetComponent<CardBehaviour>();
-
-            if (
-                card == null ||
-                !card.isFlipped)
-            {
-                return false;
-            }
-        }
-
-        return true;
+        if (firstCard != null && !firstCard.IsLocked) firstCard.CancelFlip();
+        if (secondCard != null && !secondCard.IsLocked) secondCard.CancelFlip();
+        firstCard = null; secondCard = null; checking = false;
     }
-
-    private bool IsValidTag(
-        string objectTag)
+    private void OnDisable()
     {
-        foreach (string validTag in validTags)
-        {
-            if (objectTag == validTag)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        StopAllCoroutines(); CancelTap(); ClearUnmatchedSelection();
     }
-
-    private IEnumerator SpinRewardCube()
-    {
-        if (rewardCube == null)
-        {
-            yield break;
-        }
-
-        Quaternion startRotation =
-            rewardCube.transform.rotation;
-
-        Quaternion endRotation =
-            startRotation *
-            Quaternion.Euler(
-                0f,
-                0f,
-                180f
-            );
-
-        float elapsedTime = 0f;
-
-        while (
-            elapsedTime <
-            rewardRotationDuration)
-        {
-            float progress =
-                elapsedTime /
-                rewardRotationDuration;
-
-            rewardCube.transform.rotation =
-                Quaternion.Slerp(
-                    startRotation,
-                    endRotation,
-                    progress
-                );
-
-            elapsedTime += Time.deltaTime;
-
-            yield return null;
-        }
-
-        rewardCube.transform.rotation =
-            endRotation;
-    }
-
-    private void ShuffleCardPositions()
-    {
-        List<Vector3> availablePositions =
-            new List<Vector3>(
-                originalPositions
-            );
-
-        foreach (GameObject cardObject in allCards)
-        {
-            if (availablePositions.Count == 0)
-            {
-                break;
-            }
-
-            int randomIndex =
-                UnityEngine.Random.Range(
-                    0,
-                    availablePositions.Count
-                );
-
-            cardObject.transform.position =
-                availablePositions[randomIndex];
-
-            availablePositions.RemoveAt(
-                randomIndex
-            );
-        }
-    }
-
-    private void UpdateTimerUI()
-    {
-        if (timerText == null)
-        {
-            return;
-        }
-
-        int minutes =
-            Mathf.FloorToInt(
-                timer / 60f
-            );
-
-        int seconds =
-            Mathf.FloorToInt(
-                timer % 60f
-            );
-
-        timerText.text =
-            $"{minutes:00}:{seconds:00}";
-    }
+    private void OnApplicationFocus(bool value) { focused = value; if (!value) CancelTap(); }
+    private void OnApplicationPause(bool value) { appPaused = value; if (value) CancelTap(); }
 }
