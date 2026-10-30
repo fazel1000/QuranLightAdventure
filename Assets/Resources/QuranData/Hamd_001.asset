@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71a29fdfc3b104c438d6b86155f6cc6d, type: 3}
+  m_Name: Hamd_001
+  m_EditorClassIdentifier: 
+  surahNumber: 1
+  verses:
+  - verseNumber: 1
+    verseAudio: {fileID: 8300000, guid: 98d8c1f688156ce41945d7cb22d0614e, type: 3}
+    displayText: "\u0628\u0650\u0633\u0652\u0645\u0650 \u0627\u0644\u0644\u0651\u064E\u0647\u0650
+      \u0627\u0644\u0631\u0651\u064E\u062D\u0652\u0645\u064E\u0670\u0646\u0650 \u0627\u0644\u0631\u0651\u064E\u062D\u0650\u064A\u0645\u0650"
+    persianTranslation: "\u0628\u0647 \u0646\u0627\u0645 \u062E\u062F\u0627\u0648\u0646\u062F
+      \u0628\u062E\u0634\u0646\u062F\u0647\u0654 \u0645\u0647\u0631\u0628\u0627\u0646"
+    englishTranslation: In the name of Allah, the Most Merciful, the Ever Merciful.
+  - verseNumber: 2
+    verseAudio: {fileID: 8300000, guid: 65c9db1976217cc4889901b74874fc3a, type: 3}
+    displayText: "\u0627\u0644\u0652\u062D\u064E\u0645\u0652\u062F\u064F \u0644\u0650\u0644\u0651\u064E\u0647\u0650
+      \u0631\u064E\u0628\u0651\u0650 \u0627\u0644\u0652\u0639\u064E\u0627\u0644\u064E\u0645\u0650\u064A\u0646\u064E"
+    persianTranslation: "\u0633\u062A\u0627\u06CC\u0634 \u0628\u0631\u0627\u06CC
+      \u062E\u062F\u0627\u0648\u0646\u062F\u060C \u067E\u0631\u0648\u0631\u062F\u06AF\u0627\u0631
+      \u062C\u0647\u0627\u0646\u06CC\u0627\u0646 \u0627\u0633\u062A."
+    englishTranslation: All praise belongs to Allah, Lord of all worlds.
+  - verseNumber: 3
+    verseAudio: {fileID: 8300000, guid: a74029da89cd6354497f1103d23a3bdb, type: 3}
+    displayText: "\u0627\u0644\u0631\u0651\u064E\u062D\u0652\u0645\u064E\u0670\u0646\u0650
+      \u0627\u0644\u0631\u0651\u064E\u062D\u0650\u064A\u0645\u0650"
+    persianTranslation: "\u0628\u062E\u0634\u0646\u062F\u0647\u0654 \u0645\u0647\u0631\u0628\u0627\u0646."
+    englishTranslation: The Most Merciful, the Ever Merciful.
+  - verseNumber: 4
+    verseAudio: {fileID: 8300000, guid: 0826c96c08d4160409e2687e54f76fd8, type: 3}
+    displayText: "\u0645\u064E\u0627\u0644\u0650\u0643\u0650 \u064A\u064E\u0648\u0652\u0645\u0650
+      \u0627\u0644\u062F\u0651\u0650\u064A\u0646\u0650"
+    persianTranslation: "\u0641\u0631\u0645\u0627\u0646\u0631\u0648\u0627\u06CC \u0631\u0648\u0632
+      \u062C\u0632\u0627\u0633\u062A."
+    englishTranslation: Master of the Day of Judgment.
+  - verseNumber: 5
+    verseAudio: {fileID: 8300000, guid: b90c674557299694eb58a67286b9459e, type: 3}
+    displayText: "\u0625\u0650\u064A\u0651\u064E\u0627\u0643\u064E \u0646\u064E\u0639\u0652\u0628\u064F\u062F\u064F
+      \u0648\u064E\u0625\u0650\u064A\u0651\u064E\u0627\u0643\u064E \u0646\u064E\u0633\u0652\u062A\u064E\u0639\u0650\u064A\u0646\u064F"
+    persianTranslation: "\u062A\u0646\u0647\u0627 \u062A\u0648 \u0631\u0627 \u0645\u06CC\u200C\u067E\u0631\u0633\u062A\u06CC\u0645
+      \u0648 \u062A\u0646\u0647\u0627 \u0627\u0632 \u062A\u0648 \u06CC\u0627\u0631\u06CC
+      \u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u06CC\u0645."
+    englishTranslation: You alone we worship, and You alone we ask for help.
+  - verseNumber: 6
+    verseAudio: {fileID: 8300000, guid: a3ef0b9d6cc4ae142a38a8d0cd5cf797, type: 3}
+    displayText: "\u0627\u0647\u0652\u062F\u0650\u0646\u064E\u0627 \u0627\u0644\u0635\u0651\u0650\u0631\u064E\u0627\u0637\u064E
+      \u0627\u0644\u0652\u0645\u064F\u0633\u0652\u062A\u064E\u0642\u0650\u064A\u0645\u064E"
+    persianTranslation: "\u0645\u0627 \u0631\u0627 \u0628\u0647 \u0631\u0627\u0647
+      \u0631\u0627\u0633\u062A \u0647\u062F\u0627\u06CC\u062A \u06A9\u0646."
+    englishTranslation: Guide us to the straight path.
+  - verseNumber: 7
+    verseAudio: {fileID: 8300000, guid: 909eba92cb63d4a4f913151d157cd464, type: 3}
+    displayText: "\u0635\u0650\u0631\u064E\u0627\u0637\u064E \u0627\u0644\u0651\u064E\u0630\u0650\u064A\u0646\u064E
+      \u0623\u064E\u0646\u0652\u0639\u064E\u0645\u0652\u062A\u064E \u0639\u064E\u0644\u064E\u064A\u0652\u0647\u0650\u0645\u0652
+      \u063A\u064E\u064A\u0652\u0631\u0650 \u0627\u0644\u0652\u0645\u064E\u063A\u0652\u0636\u064F\u0648\u0628\u0650
+      \u0639\u064E\u0644\u064E\u064A\u0652\u0647\u0650\u0645\u0652 \u0648\u064E\u0644\u064E\u0627
+      \u0627\u0644\u0636\u0651\u064E\u0627\u0644\u0651\u0650\u064A\u0646\u064E"
+    persianTranslation: "\u0631\u0627\u0647 \u06A9\u0633\u0627\u0646\u06CC \u06A9\u0647
+      \u0628\u0647 \u0622\u0646\u0627\u0646 \u0646\u0639\u0645\u062A \u062F\u0627\u062F\u06CC\u061B
+      \u0646\u0647 \u06A9\u0633\u0627\u0646\u06CC \u06A9\u0647 \u06AF\u0631\u0641\u062A\u0627\u0631
+      \u062E\u0634\u0645 \u0634\u062F\u0647\u200C\u0627\u0646\u062F \u0648 \u0646\u0647
+      \u06AF\u0645\u0631\u0627\u0647\u0627\u0646."
+    englishTranslation: The path of those You have blessed, who have not incurred
+      anger and have not gone astray.

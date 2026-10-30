@@ -93,7 +93,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
         percentText = percentLabel;
         statusText = statusLabel;
         recordingPressDelay = Mathf.Max(0f, pressDelay);
-        if (verseText != null) verseText.text = GetDisplayText(selectedSurah, selectedVerse, displayOverride);
+        if (verseText != null) JourneyLocalizedText.Write(verseText, GetDisplayText(selectedSurah, selectedVerse, displayOverride), true);
         if (changed) SetPercent(null);
         return true;
     }
@@ -124,6 +124,15 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
         if (assessing) generation++;
         ResumeMusic();
         SetStatus("ضبط لغو شد");
+    }
+    // Release old UI references before a multi-verse board changes its verse.
+    public void DeselectBoard(JourneyVoiceBoard board)
+    {
+        if (CurrentBoard != board) return;
+        CancelBoard(board);
+        CurrentBoard = null;
+        verseText = percentText = statusText = null;
+        visibleScore = null; lastStatusMessage = null;
     }
 
     private void OnEnable()
@@ -163,7 +172,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
             QuranVerseJsonData verse;
             if (!repository.TryGetVerse(surahNumber, verseNumber, out verse))
                 throw new InvalidOperationException("Selected verse is missing from Quran JSON.");
-            if (CurrentBoard == null && verseText != null) verseText.text = repository.GetVerseDisplayText(surahNumber, verseNumber);
+            if (CurrentBoard == null && verseText != null) JourneyLocalizedText.Write(verseText, repository.GetVerseDisplayText(surahNumber, verseNumber), true);
             ready = true;
             SetStatus("آمادهٔ ضبط");
         }
@@ -202,7 +211,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
     {
         if (!isActiveAndEnabled || !ready || preparing || assessing || requestingPermission || recorder == null) return;
         if (recorder.IsRecording) { recorder.Finish(); return; }
-        if (CurrentBoard != null && !CurrentBoard.CanRecord) { SetStatus(JourneyVoiceBoard.LockedMessage); return; }
+        if (CurrentBoard != null && !CurrentBoard.CanRecord) { SetStatus(CurrentBoard.RecordingLockedMessage); return; }
         StopPraise();
         recordingRequest = StartCoroutine(RequestAndRecord());
     }
@@ -238,7 +247,7 @@ public sealed class JourneyVerseVoicePanel : MonoBehaviour
         if (recordingPressDelay > 0f) yield return new WaitForSecondsRealtime(recordingPressDelay);
         requestingPermission = false;
         recordingRequest = null;
-        if (CurrentBoard != null && !CurrentBoard.CanRecord) { SetStatus(JourneyVoiceBoard.LockedMessage); ResumeMusic(); RefreshButtons(); yield break; }
+        if (CurrentBoard != null && !CurrentBoard.CanRecord) { SetStatus(CurrentBoard.RecordingLockedMessage); ResumeMusic(); RefreshButtons(); yield break; }
         try
         {
             if (recorder.Begin()) { SetPercent(null); SetStatus("در حال ضبط… برای پایان دوباره بزن"); }

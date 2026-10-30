@@ -38,6 +38,8 @@ public sealed class JourneyRadialMenu : MonoBehaviour, IPointerDownHandler, IDra
     private static JourneyRadialMenu opened;
     private readonly List<Image> backgrounds = new List<Image>();
     private readonly List<Image> icons = new List<Image>();
+    // Scene pickups own these entries; they never replace or equip catalog items.
+    private readonly Dictionary<UnityEngine.Object, Item> runtimeItems = new Dictionary<UnityEngine.Object, Item>();
     private readonly List<RaycastResult> mouseHits = new List<RaycastResult>();
     private PointerEventData mousePointer;
     private bool mouseFallbackHeld;
@@ -57,6 +59,26 @@ public sealed class JourneyRadialMenu : MonoBehaviour, IPointerDownHandler, IDra
         buttonVisibility = GetComponent<CanvasGroup>() ?? gameObject.AddComponent<CanvasGroup>();
         originalAlpha = buttonVisibility.alpha; originalBlocks = buttonVisibility.blocksRaycasts; originalInteractable = buttonVisibility.interactable;
         if (menuRoot != null) { menuRoot.alpha = 0f; menuRoot.blocksRaycasts = false; menuRoot.gameObject.SetActive(false); }
+    }
+    public void SetRuntimeItem(UnityEngine.Object owner, string label, Sprite icon, bool visible, UnityAction selected)
+    {
+        if (owner == null) return;
+        runtimeItems.TryGetValue(owner, out Item item);
+        if (!visible)
+        {
+            if (item == null) return;
+            if (opened == this) Close(true);
+            items.Remove(item); runtimeItems.Remove(owner); SelectedIndex = -1;
+            return;
+        }
+        if (item == null)
+        {
+            if (opened == this) Close(true);
+            item = new Item(); runtimeItems.Add(owner, item); items.Add(item);
+        }
+        item.name = label; item.icon = icon; item.available = true;
+        item.onSelected.RemoveAllListeners();
+        if (selected != null) item.onSelected.AddListener(selected);
     }
     private void Build()
     {

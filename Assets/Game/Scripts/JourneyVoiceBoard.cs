@@ -20,6 +20,8 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     [SerializeField] private LightBrushPuzzle scoreReceiver;
     [SerializeField] private JourneyMenuController menu;
     [SerializeField] private Camera interactionCamera;
+    [Tooltip("Optional crystal lock and verse arrows. Leave empty on the existing ButtonsBoard boards.")]
+    [SerializeField] private JourneyHamdBoard hamdBoard;
 
     [Header("Separate Blender button objects")]
     [SerializeField] private Collider playCollider;
@@ -39,12 +41,21 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     [SerializeField, Min(0)] private int requiredPuzzleNumber;
     [TextArea] [SerializeField] private string persianTranslationOverride;
     [TextArea] [SerializeField] private string englishTranslationOverride;
-    public bool CanRecord => !requireWordPuzzle || (scoreReceiver != null && scoreReceiver.IsPuzzleSolved(RequiredPuzzle));
+    public bool IsActivated => hamdBoard == null || hamdBoard.IsActivated;
+    public bool CanRecord => IsActivated && (!requireWordPuzzle || (scoreReceiver != null && scoreReceiver.IsPuzzleSolved(RequiredPuzzle)));
+    public string RecordingLockedMessage => !IsActivated ?
+        (hamdBoard.State == JourneyHamdBoard.CrystalState.Carried ? JourneyHamdBoard.CrystalCarriedMessage : JourneyHamdBoard.CrystalLockedMessage) : LockedMessage;
+    public int VerseNumber => verseNumber;
+    public bool CanChangeVerse => IsActivated && (voiceService == null || voiceService.CurrentBoard != this ||
+        !(voiceService.IsRecording || voiceService.IsRecordPending || voiceService.IsAssessing));
+    public bool HasPreviousVerse => AdjacentVerse(-1) > 0;
+    public bool HasNextVerse => AdjacentVerse(1) > 0;
     private int RequiredPuzzle => requiredPuzzleNumber > 0 ? requiredPuzzleNumber :
         surah != null && surah.surahNumber == 112 ? verseNumber :
         verse != null && verse.surahNumber == 112 ? verse.verseNumber : 0;
     public const string LockedMessage = "اول جعبه‌های کلمات این آیه را پیدا کن و درست به هم وصل کن";
     private float? boardScore;
+    private readonly Dictionary<int, float> verseScores = new Dictionary<int, float>();
     private string renderedScore;
     [Header("3D button colors (assign only button surface renderers)")]
     [SerializeField] private Renderer[] playRenderers;
@@ -78,6 +89,7 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
 
     private void Awake()
     {
+        if (hamdBoard == null) hamdBoard = GetComponent<JourneyHamdBoard>();
         if (voiceService == null) voiceService = FindFirstObjectByType<JourneyVerseVoicePanel>(FindObjectsInactive.Include);
         if (scoreReceiver == null) scoreReceiver = FindFirstObjectByType<LightBrushPuzzle>(FindObjectsInactive.Include);
         if (menu == null) menu = FindFirstObjectByType<JourneyMenuController>(FindObjectsInactive.Include);
@@ -115,9 +127,10 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
         {
             string text = TryGetSelection(out int number, out int selectedVerse, out AudioClip audio, out string display)
                 ? voiceService.GetDisplayText(number, selectedVerse, display) : string.Empty;
-            if (!string.IsNullOrEmpty(text) && lastVerseDisplay != text) { verseText.text = text; lastVerseDisplay = text; }
+            if (!string.IsNullOrEmpty(text) && lastVerseDisplay != text) { JourneyLocalizedText.Write(verseText, text, true); lastVerseDisplay = text; }
         }
-        if (menu != null && menu.IsMenuOpen)
+        if ((menu != null && menu.IsMenuOpen) || Time.timeScale <= 0f ||
+            (hamdBoard != null && !hamdBoard.CanInteract))
         {
             if (!menuWasOpen) voiceService.CancelBoard(this);
             menuWasOpen = true;
@@ -125,7 +138,7 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
         }
         else { menuWasOpen = false; ReadPresses(); }
         bool selected = voiceService.CurrentBoard == this;
-        playTint?.Set(selected && voiceService.IsPlaying ? playingColor : (Color?)null);
+        playTint?.Set(!IsActivated ? lockedColor : selected && voiceService.IsPlaying ? playingColor : (Color?)null);
         recordTint?.Set(!CanRecord ? lockedColor : selected && voiceService.IsRecording ? recordingColor :
             selected && (voiceService.IsRecordPending || voiceService.IsAssessing) ? pendingColor : (Color?)null);
         AnimateButton(true, selected && voiceService.IsPlaying);
@@ -164,6 +177,7 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
         if (interactionCamera == null || IsOverSelectableUI(screenPosition)) return false;
         Ray ray = interactionCamera.ScreenPointToRay(screenPosition);
         if (!Physics.Raycast(ray, out RaycastHit hit, maxTouchDistance, interactionLayers, QueryTriggerInteraction.Collide)) return false;
+        if (hamdBoard != null && hamdBoard.TryPress(hit.collider)) return true;
         bool play = hit.collider == playCollider;
         if (!play && hit.collider != recordCollider) return false;
         if (play) Play(); else Record();
@@ -206,6 +220,8 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     private bool Select()
     {
         if (menu != null && menu.IsMenuOpen) return false;
+        if (hamdBoard != null && !hamdBoard.InBoardRange) return false;
+        if (!IsActivated) { ShowStatus(RecordingLockedMessage); return false; }
         if (!TryGetSelection(out int number, out int selectedVerse, out AudioClip audio, out string display))
         {
             ShowStatus("آیهٔ تابلو در فهرست سوره نیست یا شمارهٔ تکراری دارد");
@@ -224,7 +240,7 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     public void Record()
     {
         if (!Select()) return;
-        if (!CanRecord) { ShowStatus(LockedMessage); return; }
+        if (!CanRecord) { ShowStatus(RecordingLockedMessage); return; }
         if (!voiceService.IsReady)
         {
             string status = voiceService.PreparationStatus;
@@ -241,6 +257,7 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
         if (float.IsNaN(percentage) || float.IsInfinity(percentage)) return;
         lastStatusMessage = null;
         boardScore = percentage;
+        verseScores[verseNumber] = percentage;
         RenderBoardScore();
         int points = Mathf.FloorToInt(Mathf.Clamp(percentage, 0f, 100f) / 10f);
         if (scoreReceiver != null) scoreReceiver.AddVoicePoints(points);
@@ -270,9 +287,44 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     private string lastRenderedStatus;
     private void RefreshStatusLanguage()
     {
+        if (!IsActivated) { ShowStatus(RecordingLockedMessage); return; }
         var target = statusText != null ? statusText : percentText;
         if (target != null && JourneyLocalizedText.Original(target) == lastRenderedStatus && !string.IsNullOrEmpty(lastStatusMessage))
             ShowStatus(lastStatusMessage);
+    }
+    private int AdjacentVerse(int direction)
+    {
+        if (surah == null || surah.verses == null || direction == 0) return 0;
+        int best = 0;
+        foreach (var entry in surah.verses)
+        {
+            if (entry == null || entry.verseNumber < 1 || !surah.TryGetVerse(entry.verseNumber, out _)) continue;
+            int candidate = entry.verseNumber;
+            if (direction > 0 && candidate > verseNumber && (best == 0 || candidate < best) ||
+                direction < 0 && candidate < verseNumber && (best == 0 || candidate > best)) best = candidate;
+        }
+        return best;
+    }
+    public bool ChangeVerse(int direction)
+    {
+        if (!CanChangeVerse || (menu != null && menu.IsMenuOpen) ||
+            (hamdBoard != null && !hamdBoard.InBoardRange)) return false;
+        int next = AdjacentVerse(direction);
+        if (next == 0) return false;
+        if (voiceService != null) voiceService.DeselectBoard(this);
+        verseNumber = next;
+        boardScore = verseScores.TryGetValue(next, out float previousScore) ? previousScore : (float?)null;
+        lastVerseDisplay = null;
+        RefreshAvailability();
+        RefreshTranslation();
+        return true;
+    }
+    public void RefreshAvailability()
+    {
+        lastStatusMessage = null; lastRenderedStatus = null;
+        if (!IsActivated) { ShowStatus(RecordingLockedMessage); return; }
+        if (percentText != null) JourneyLocalizedText.Write(percentText, "—");
+        if (boardScore.HasValue) RenderBoardScore();
     }
     private void ShowStatus(string message)
     {

@@ -37,6 +37,8 @@ public static class JourneyLocalization
         JourneyLocalizedText.Write(target, FormatPercent(score));
     }
     private static readonly string[][] Entries = {
+        new[] { "لطفاً کریستال این سوره را پیدا کن و در جای خود قرار بده", "Find this surah's crystal and place it in its socket", "اعثر على بلورة هذه السورة وضعها في مكانها" },
+        new[] { "کریستال پیدا شد؛ نزدیک تابلو برو و جای کریستال را لمس کن", "Crystal found; approach the board and tap the crystal socket", "عُثر على البلورة؛ اقترب من اللوحة والمس مكان البلورة" },
         new[] { "اول جعبه‌های کلمات این آیه را پیدا کن و درست به هم وصل کن", "First find and correctly connect this verse's word boxes", "اعثر أولًا على صناديق كلمات هذه الآية وصِلْها بالترتيب الصحيح" },
         new[] { "شخصی‌سازی", "Customize", "تخصيص الشخصية" },
         new[] { "پرش", "Jump", "قفز" },

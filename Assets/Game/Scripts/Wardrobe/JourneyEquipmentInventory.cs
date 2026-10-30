@@ -34,13 +34,16 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
     public Character player;
     public JourneyPlayerCombat combat;
     public JourneyWardrobeRoom wardrobe;
+    [Header("Carrying and throwing stones")]
+    public JourneyStoneThrowController stoneController;
+    public bool hideSwordWhileUsingStone = true;
     [Tooltip("Use the local position, rotation and scale authored on each equipment root under its Humanoid bone when play starts. Disable to use the offsets stored in Attachments instead.")]
     public bool readAttachmentPosesFromScene = true;
     public List<Item> items = new List<Item>();
     public event Action Changed;
     private readonly Dictionary<Category, string> equipped = new Dictionary<Category, string>();
     private Animator bound;
-    private bool initialized, scenePosesCaptured;
+    private bool initialized, scenePosesCaptured, swordHiddenForStone;
     private const string SelectedKey = "JourneyOfLight.Equipment.Selected.";
     public bool HasShieldItems => items.Exists(item => item != null && item.category == Category.Shield);
     public BoxCollider EquippedShieldCollider
@@ -51,6 +54,7 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
     {
         if (player == null) player = GetComponent<Character>();
         if (combat == null) combat = GetComponent<JourneyPlayerCombat>();
+        if (stoneController == null) stoneController = FindFirstObjectByType<JourneyStoneThrowController>(FindObjectsInactive.Include);
         CaptureSceneAttachmentPoses();
         if (player != null)
         { player.EventBeforeChangeModel += BeforeModelChange; player.EventAfterChangeModel += RefreshBindings; }
@@ -145,12 +149,7 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
     }
     private void ApplySelections()
     {
-        foreach (var item in items) if (item != null)
-        {
-            bool active = Owns(item) && equipped.TryGetValue(item.category, out string id) && id == item.id;
-            foreach (var attachment in item.attachments)
-                if (attachment != null && attachment.root != null) attachment.root.gameObject.SetActive(active);
-        }
+        ApplyVisibility();
         Item shield = items.Find(item => item != null && item.category == Category.Shield && IsEquipped(item));
         if (combat != null)
         {
@@ -160,8 +159,26 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
         var binder = player != null ? player.GetComponent<JourneyPlayerModelBindings>() : null;
         if (binder != null) binder.shieldHitbox = combat != null ? combat.shieldHitbox : null;
     }
+    private void ApplyVisibility()
+    {
+        swordHiddenForStone = hideSwordWhileUsingStone && stoneController != null &&
+            stoneController.isActiveAndEnabled && stoneController.IsUsingStone;
+        foreach (var item in items) if (item != null)
+        {
+            bool active = Owns(item) && equipped.TryGetValue(item.category, out string id) && id == item.id &&
+                !(swordHiddenForStone && item.category == Category.Sword);
+            foreach (var attachment in item.attachments)
+                if (attachment != null && attachment.root != null) attachment.root.gameObject.SetActive(active);
+        }
+    }
     private void LateUpdate()
-    { if (initialized && player != null && player.Animim.Animator != bound) RefreshBindings(); }
+    {
+        if (!initialized) return;
+        if (player != null && player.Animim.Animator != bound) RefreshBindings();
+        bool hide = hideSwordWhileUsingStone && stoneController != null &&
+            stoneController.isActiveAndEnabled && stoneController.IsUsingStone;
+        if (hide != swordHiddenForStone) ApplyVisibility();
+    }
     private void OnDestroy()
     {
         if (player == null) return;
