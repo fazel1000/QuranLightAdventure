@@ -1,6 +1,7 @@
 using DG.Tweening;
 using UnityEngine;
 
+// Shared by Hamd, Falagh and Naas boards. Keep the component name for existing scene references.
 // One crystal belongs to one board. State is local to this scene instance.
 [DisallowMultipleComponent, RequireComponent(typeof(JourneyVoiceBoard))]
 public sealed class JourneyHamdBoard : MonoBehaviour
@@ -28,6 +29,11 @@ public sealed class JourneyHamdBoard : MonoBehaviour
     public GameObject socketVisual;
     public Color socketColor = new Color(0.12f, 0.28f, 0.32f, 1f);
     public Sprite crystalIcon;
+    [Header("Crystal name in radial inventory")]
+    public string persianCrystalName = "کریستال سورهٔ حمد";
+    public string englishCrystalName = "Al-Fatiha crystal";
+    public string arabicCrystalName = "بلورة سورة الفاتحة";
+    [Header("Crystal placement and sound")]
     public Vector3 placedLocalEulerAngles;
     public Vector3 placedLocalScale = Vector3.one;
     public AudioSource effectsSource;
@@ -149,7 +155,7 @@ public sealed class JourneyHamdBoard : MonoBehaviour
     private void RefreshInventory()
     {
         if (radialMenu == null) return;
-        radialMenu.SetRuntimeItem(this, JourneyLocalization.Choose("کریستال سورهٔ حمد", "Al-Fatiha crystal", "بلورة سورة الفاتحة"),
+        radialMenu.SetRuntimeItem(this, JourneyLocalization.Choose(persianCrystalName, englishCrystalName, arabicCrystalName),
             crystalIcon, isActiveAndEnabled && State == CrystalState.Carried, ShowCrystalHint);
     }
     private void ShowCrystalHint() { if (voiceBoard != null) voiceBoard.RefreshAvailability(); }

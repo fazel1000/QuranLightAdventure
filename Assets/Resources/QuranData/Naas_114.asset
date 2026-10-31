@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject:
+    fileID: 0
+  m_PrefabInstance:
+    fileID: 0
+  m_PrefabAsset:
+    fileID: 0
+  m_GameObject:
+    fileID: 0
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script:
+    fileID: 11500000
+    guid: 71a29fdfc3b104c438d6b86155f6cc6d
+    type: 3
+  m_EditorClassIdentifier: ''
+  m_Name: Naas_114
+  surahNumber: 114
+  verses:
+  - verseNumber: 1
+    verseAudio:
+      fileID: 8300000
+      guid: 98d8c1f688156ce41945d7cb22d0614e
+      type: 3
+    displayText: بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+    persianTranslation: به نام خداوند بخشندهٔ مهربان
+    englishTranslation: In the name of Allah, the Most Merciful, the Ever Merciful.
+  - verseNumber: 2
+    verseAudio:
+      fileID: 0
+    displayText: قُلْ أَعُوذُ بِرَبِّ النَّاسِ
+    persianTranslation: 'بگو: به پروردگار مردم پناه می‌برم.'
+    englishTranslation: 'Say: I seek refuge in the Lord of humankind.'
+  - verseNumber: 3
+    verseAudio:
+      fileID: 0
+    displayText: مَلِكِ النَّاسِ
+    persianTranslation: فرمانروای مردم.
+    englishTranslation: The King of humankind.
+  - verseNumber: 4
+    verseAudio:
+      fileID: 0
+    displayText: إِلَٰهِ النَّاسِ
+    persianTranslation: خدای مردم.
+    englishTranslation: The God of humankind.
+  - verseNumber: 5
+    verseAudio:
+      fileID: 0
+    displayText: مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ
+    persianTranslation: از شرّ وسوسه‌گرِ پنهان‌شونده.
+    englishTranslation: From the evil of the whisperer who retreats.
+  - verseNumber: 6
+    verseAudio:
+      fileID: 0
+    displayText: الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ
+    persianTranslation: آن‌که در سینه‌های مردم وسوسه می‌کند.
+    englishTranslation: Who whispers into the hearts of humankind.
+  - verseNumber: 7
+    verseAudio:
+      fileID: 0
+    displayText: مِنَ الْجِنَّةِ وَالنَّاسِ
+    persianTranslation: از جنّیان و آدمیان.
+    englishTranslation: From among jinn and humankind.

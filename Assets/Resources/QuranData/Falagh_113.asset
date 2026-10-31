@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject:
+    fileID: 0
+  m_PrefabInstance:
+    fileID: 0
+  m_PrefabAsset:
+    fileID: 0
+  m_GameObject:
+    fileID: 0
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script:
+    fileID: 11500000
+    guid: 71a29fdfc3b104c438d6b86155f6cc6d
+    type: 3
+  m_EditorClassIdentifier: ''
+  m_Name: Falagh_113
+  surahNumber: 113
+  verses:
+  - verseNumber: 1
+    verseAudio:
+      fileID: 8300000
+      guid: 98d8c1f688156ce41945d7cb22d0614e
+      type: 3
+    displayText: بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+    persianTranslation: به نام خداوند بخشندهٔ مهربان
+    englishTranslation: In the name of Allah, the Most Merciful, the Ever Merciful.
+  - verseNumber: 2
+    verseAudio:
+      fileID: 0
+    displayText: قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ
+    persianTranslation: 'بگو: به پروردگار سپیده‌دم پناه می‌برم.'
+    englishTranslation: 'Say: I seek refuge in the Lord of daybreak.'
+  - verseNumber: 3
+    verseAudio:
+      fileID: 0
+    displayText: مِن شَرِّ مَا خَلَقَ
+    persianTranslation: از شرّ آنچه آفریده است.
+    englishTranslation: From the evil of what He has created.
+  - verseNumber: 4
+    verseAudio:
+      fileID: 0
+    displayText: وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ
+    persianTranslation: و از شرّ تاریکیِ شب، هنگامی که فراگیرد.
+    englishTranslation: And from the evil of darkness when it settles.
+  - verseNumber: 5
+    verseAudio:
+      fileID: 0
+    displayText: وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ
+    persianTranslation: و از شرّ دمندگان در گره‌ها.
+    englishTranslation: And from the evil of those who blow on knots.
+  - verseNumber: 6
+    verseAudio:
+      fileID: 0
+    displayText: وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ
+    persianTranslation: و از شرّ حسود، هنگامی که حسد ورزد.
+    englishTranslation: And from the evil of an envier when they envy.
