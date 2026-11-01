@@ -17257,7 +17257,7 @@ Transform:
   m_GameObject: {fileID: 136056904}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -1.2054925, y: -0.66259295, z: 1.5652019}
+  m_LocalPosition: {x: -0.79, y: -0.66259295, z: 1.088}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -32535,6 +32535,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5412017221204367677, guid: abe3d47b915ca924a9e06dd6d3321396, type: 3}
   m_PrefabInstance: {fileID: 253870099}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &254237878
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 254237879}
+  m_Layer: 0
+  m_Name: Diving Respawn Point
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &254237879
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 254237878}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 28.192686, y: 41.313305, z: 344.3631}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &254620784
 GameObject:
   m_ObjectHideFlags: 0
@@ -35154,7 +35185,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1224.4, y: -460.40002}
+  m_AnchoredPosition: {x: 1224.4, y: -582.3903}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1001 &281471128
@@ -52542,7 +52573,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -57384,6 +57415,7 @@ GameObject:
   - component: {fileID: 445630437}
   - component: {fileID: 445630438}
   - component: {fileID: 445630439}
+  - component: {fileID: 445630440}
   m_Layer: 8
   m_Name: Player
   m_TagString: Untagged
@@ -57552,7 +57584,7 @@ Transform:
   m_GameObject: {fileID: 445630432}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 25.829952, y: 36.6, z: 341.29}
+  m_LocalPosition: {x: -451.8, y: 36.6, z: 243.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -57663,6 +57695,7 @@ MonoBehaviour:
   minimumDiveLookAngle: 15
   bottomClearance: 0.1
   enterSubmersion: 0.04
+  underwaterExitClearance: 0.02
   shoreExitMargin: 0.12
   breathingClearance: 0.06
   buoyancyResponse: 4
@@ -57710,6 +57743,9 @@ MonoBehaviour:
   player: {fileID: 445630433}
   combat: {fileID: 445630435}
   wardrobe: {fileID: 196393006}
+  swimming: {fileID: 445630437}
+  hideWeaponsAndArmorUnderwater: 1
+  resetAllPurchasesInEditor: 0
   stoneController: {fileID: 177892342}
   hideSwordWhileUsingStone: 1
   readAttachmentPosesFromScene: 1
@@ -57843,6 +57879,33 @@ MonoBehaviour:
       localEulerAngles: {x: 340.49185, y: 268.2063, z: 182.54138}
       localScale: {x: 0.6326325, y: 0.6326325, z: 0.6326325}
     shieldCollider: {fileID: 0}
+--- !u!114 &445630440
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 445630432}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd578417a3d7a9940bcb983db4e5dac9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  swimming: {fileID: 445630437}
+  inventory: {fileID: 445630439}
+  combat: {fileID: 445630435}
+  menu: {fileID: 219948557}
+  breathSeconds: 30
+  scubaSeconds: 600
+  drowningDamagePerTick: 5
+  drowningDamageInterval: 1
+  drowningRespawnPoint: {fileID: 254237879}
+  breathHealthUI: {fileID: 1115544049}
+  scubaGearHealthUI: {fileID: 281286398}
+  breathFill: {fileID: 1340847349}
+  scubaGearFill: {fileID: 248549090}
+  breathSlider: {fileID: 0}
+  scubaGearSlider: {fileID: 0}
 --- !u!1001 &446815943
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -73478,61 +73541,61 @@ MonoBehaviour:
   slotBackground: {fileID: 21300000, guid: 67ce009c16be1db42b727d15bc30b666, type: 3}
   items:
   - name: Sword 01 Green
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 21b11b5016d2fd84f8d79136f6bf052c, type: 3}
     available: 1
     equipmentId: sword-d3b17dbc8c12433a73467010fb25168b
     equipmentGroup: Held Item
-    equipmentObject: {fileID: 0}
+    equipmentObject: {fileID: 1259990029}
     onSelected:
       m_PersistentCalls:
         m_Calls: []
   - name: Sword 03 Green
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: daa69387e16b2c14084dc5d9631ee5a5, type: 3}
     available: 1
     equipmentId: sword-1ba8cf59cba8a5d9fdc99df494e61566
     equipmentGroup: Held Item
-    equipmentObject: {fileID: 0}
+    equipmentObject: {fileID: 1533493134}
     onSelected:
       m_PersistentCalls:
         m_Calls: []
   - name: Sword 03 Purple
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 1c54cb01c17ba4d4aa65e171a9e787c4, type: 3}
     available: 1
     equipmentId: sword-d93c5df6d7a06eb04fb9af3c56e7cf36
     equipmentGroup: Held Item
-    equipmentObject: {fileID: 0}
+    equipmentObject: {fileID: 1603983860}
     onSelected:
       m_PersistentCalls:
         m_Calls: []
   - name: Sword 07 Purple
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 49e5d5a89f5059f40acc589953a641c2, type: 3}
     available: 1
     equipmentId: sword-dcca3182a50a882caa24ea6d8fae33b5
     equipmentGroup: Held Item
-    equipmentObject: {fileID: 0}
+    equipmentObject: {fileID: 840013204}
     onSelected:
       m_PersistentCalls:
         m_Calls: []
   - name: Sword 09 Green
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 222ec382598c8a747870b784a160d662, type: 3}
     available: 1
     equipmentId: sword-1a30b6fe04cf1b6aa0f3f71ed70f1b46
     equipmentGroup: Held Item
-    equipmentObject: {fileID: 0}
+    equipmentObject: {fileID: 1683784121}
     onSelected:
       m_PersistentCalls:
         m_Calls: []
   - name: Shield 1
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 3d81f6061f07b494d87f7dca398f1151, type: 3}
     available: 1
     equipmentId: shield-efbb67ed390003389177f362c7d7c8f4
     equipmentGroup: Held Item
-    equipmentObject: {fileID: 0}
+    equipmentObject: {fileID: 1602640910}
     onSelected:
       m_PersistentCalls:
         m_Calls: []
   - name: "\u062A\u062C\u0647\u06CC\u0632\u0627\u062A \u063A\u0648\u0627\u0635\u06CC"
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a14a36c8359bfaf46a24b2709e3b277d, type: 3}
     available: 1
     equipmentId: scuba-b7da6653f81372b4585928374d705620
     equipmentGroup: Held Item
@@ -73540,6 +73603,7 @@ MonoBehaviour:
     onSelected:
       m_PersistentCalls:
         m_Calls: []
+  toggleEquippedItems: 1
   enableDesktopMouseInput: 1
   ringRadius: 140
   itemSize: 72
@@ -90061,7 +90125,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -138031,7 +138095,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1224.4, y: -460.40002}
+  m_AnchoredPosition: {x: 1224.4, y: -582.3903}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1117071921
@@ -144728,7 +144792,7 @@ Transform:
   m_GameObject: {fileID: 1164083834}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 30.687494, y: 10.65008, z: 350.75745}
+  m_LocalPosition: {x: -446.94244, y: 10.65008, z: 253.06744}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -165872,7 +165936,7 @@ Transform:
   m_GameObject: {fileID: 1365321099}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 559.5649, y: -29.455765, z: -194.36018}
+  m_LocalPosition: {x: 559.98035, y: -29.455765, z: -194.83739}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -168033,7 +168097,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -212919,7 +212983,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -258053,6 +258117,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 698779367}
   m_LocalEulerAnglesHint: {x: 0, y: 3.086, z: 0}
+--- !u!4 &543450652422883139
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 919132148151000569}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.759, y: 0, z: 0.13}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 924800835683020249}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &543450652453119283
 Transform:
   m_ObjectHideFlags: 0
@@ -258411,6 +258491,14 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8864638599492960419}
+  m_Mesh: {fileID: 7423577632551321491, guid: b7da6653f81372b4585928374d705620, type: 3}
+--- !u!33 &614579525420509772
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8864638599297135965}
   m_Mesh: {fileID: 7423577632551321491, guid: b7da6653f81372b4585928374d705620, type: 3}
 --- !u!33 &619928143157844496
 MeshFilter:
@@ -259002,6 +259090,22 @@ GameObject:
   - component: {fileID: 3469287838632593116}
   m_Layer: 6
   m_Name: Word_01_Bism
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!1 &919132148151000569
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 543450652422883139}
+  m_Layer: 0
+  m_Name: Scuba Gear  (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -259972,6 +260076,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!4 &924800835683020249
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8864638599297135965}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 543450652422883139}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &924800836028209191
 Transform:
   m_ObjectHideFlags: 0
@@ -259981,7 +260100,7 @@ Transform:
   m_GameObject: {fileID: 8864638599492960419}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.41549248, y: 0, z: -0.47720182}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -265515,7 +265634,7 @@ Transform:
   m_GameObject: {fileID: 2114845963461755247}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.41549248, y: 0, z: -0.47720182}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -265867,7 +265986,7 @@ Transform:
   m_GameObject: {fileID: 491661958256331801}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.41549248, y: 0, z: -0.47720182}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -268120,6 +268239,51 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2007858679820153885}
   m_Mesh: {fileID: -6839095097682000603, guid: a42f124bde87ceb4da62b5b965dba645, type: 3}
+--- !u!23 &7230539210115994834
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8864638599297135965}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 0d54e68fef273e14a8ffa21c805a6204, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!23 &7230539210977157420
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -270196,6 +270360,24 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.1120224, y: 0.71748376, z: 0.43310136}
   m_Center: {x: -0.00000071525574, y: -0.00000059604645, z: 0.0000005289912}
+--- !u!1 &8864638599297135965
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 924800835683020249}
+  - component: {fileID: 614579525420509772}
+  - component: {fileID: 7230539210115994834}
+  m_Layer: 0
+  m_Name: Diving Mask Glass
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
 --- !u!1 &8864638599492960419
 GameObject:
   m_ObjectHideFlags: 0
@@ -270685,7 +270867,7 @@ Transform:
   m_GameObject: {fileID: 2487020327693793609}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.41549248, y: 0, z: -0.47720182}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -270921,3 +271103,5 @@ SceneRoots:
   - {fileID: 543450651921170703}
   - {fileID: 543450652453119283}
   - {fileID: 543450652990964043}
+  - {fileID: 254237879}
+  - {fileID: 543450652422883139}

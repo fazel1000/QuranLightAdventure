@@ -24,6 +24,8 @@ public sealed class JourneyPlayerSwimming : MonoBehaviour
     [Range(0f, 80f)] public float minimumDiveLookAngle = 15f;
     [Min(0f)] public float bottomClearance = 0.1f;
     [Min(0f)] public float enterSubmersion = 0.04f;
+    [Tooltip("The mouth must rise this far above the water to breathe again; prevents waterline jitter.")]
+    [Min(0f)] public float underwaterExitClearance = 0.02f;
     [Min(0f)] public float shoreExitMargin = 0.12f;
     [Min(0f)] public float breathingClearance = 0.06f;
     [Min(0.1f)] public float buoyancyResponse = 4f, maximumRiseSpeed = 1.5f;
@@ -34,6 +36,7 @@ public sealed class JourneyPlayerSwimming : MonoBehaviour
     public bool useApproachEdgeAnimation;
     public LayerMask groundLayers = ~0;
     public bool IsSwimmingNow { get; private set; }
+    public bool IsUnderwaterNow { get; private set; }
     public float EffectiveSwimSpeed => Mathf.Max(0.1f, swimSpeed * swimSpeedMultiplier);
     public static bool IsSwimming => activeSwimmer != null && activeSwimmer.IsSwimmingNow;
     private static JourneyPlayerSwimming activeSwimmer;
@@ -89,6 +92,7 @@ public sealed class JourneyPlayerSwimming : MonoBehaviour
     {
         if (!initialized || player == null) return;
         RefreshAnimator();
+        RefreshUnderwaterState();
         if (!player.isActiveAndEnabled || player.IsDead || JourneyRideSession.IsOccupied)
         { LeaveWater(); BlendAnimation(false, 0f, false); return; }
         if (!Gameplay)
@@ -148,6 +152,24 @@ public sealed class JourneyPlayerSwimming : MonoBehaviour
         bool nearEdge = useApproachEdgeAnimation && nearSurface && motion > 0.1f && WalkableShoreAt(transform.position + facing * 0.8f, out _);
         BlendAnimation(true, Mathf.Clamp01(motion), nearEdge);
     }
+    private void RefreshUnderwaterState()
+    {
+        if (!player.isActiveAndEnabled || player.IsDead || JourneyRideSession.IsOccupied)
+        { IsUnderwaterNow = false; return; }
+        Vector3 point = MouthPoint;
+        var volume = water != null && water.ContainsHorizontal(point) ? water :
+            preferredWater != null && preferredWater.ContainsHorizontal(point) ? preferredWater : JourneyWaterVolume.FindAt(point, gameObject.scene);
+        if (volume == null || !volume.IsUsable || point.y < volume.Region.bounds.min.y)
+        { IsUnderwaterNow = false; return; }
+        float threshold = volume.SurfaceY + (IsUnderwaterNow ? underwaterExitClearance : -enterSubmersion);
+        IsUnderwaterNow = point.y < threshold;
+    }
+    public void ResetForRespawn()
+    {
+        LeaveWater(); IsUnderwaterNow = false; layerWeight = 0f; speedBlend = 0f;
+        if (animator != null && animator.isActiveAndEnabled && controller == animator.runtimeAnimatorController && layer >= 0)
+            animator.SetLayerWeight(layer, 0f);
+    }
     private bool WalkableShoreAt(Vector3 point, out float floorY)
     {
         floorY = float.NegativeInfinity;
@@ -204,7 +226,7 @@ public sealed class JourneyPlayerSwimming : MonoBehaviour
     private void OnApplicationPause(bool value) { paused = value; }
     private void OnDisable()
     {
-        LeaveWater(); layerWeight = 0f;
+        LeaveWater(); IsUnderwaterNow = false; layerWeight = 0f;
         if (animator != null && animator.isActiveAndEnabled && player != null && player.isActiveAndEnabled && layer >= 0 && controller == animator.runtimeAnimatorController) animator.SetLayerWeight(layer, 0f);
     }
 }

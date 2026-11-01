@@ -102,7 +102,9 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     private int attackRequestFrame = -1;
     private bool ready, focused = true, paused, observedAttack;
     private float invulnerableUntil, nextAttackAt, attackStarted, previousAttackTime;
+    private float environmentalProtectionUntil;
     private RuntimeAnimatorController expectedController;
+    private JourneyEquipmentInventory equipment;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics() { activeAttacker = null; }
@@ -114,6 +116,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     }
     private void Start()
     {
+        equipment = GetComponent<JourneyEquipmentInventory>();
         if (player == null) player = GetComponent<Character>();
         if (menu == null) menu = FindFirstObjectByType<JourneyMenuController>();
         if (player == null || playerAnimator == null || menu == null || startPoint == null || attackButton == null)
@@ -160,6 +163,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     {
         if (!ready) return;
         if (JourneyPlayerSwimming.IsSwimming) { EndDefense(); EndAttack(); }
+        if (equipment != null && equipment.HasSwordItems && !equipment.HasVisibleSword) EndAttack();
         if (attackButton != null) attackButton.interactable = CanAttack();
         if (defendButton != null) defendButton.interactable = IsDefending || CanDefend();
         UpdateDefense();
@@ -221,6 +225,7 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
     private bool CanAttack()
     {
         return GameplayActive && !JourneyPlayerSwimming.IsSwimming && !IsAttacking && !IsDefending && Time.time >= nextAttackAt &&
+            (equipment == null || !equipment.HasSwordItems || equipment.HasVisibleSword) &&
             !LightBrushPuzzle.IsMovementBlocked && !JourneyVoiceBoard.IsPointerCaptured &&
             (stoneController == null || !stoneController.IsUsingStone) &&
             playerAnimator != null && playerAnimator.isActiveAndEnabled &&
@@ -363,17 +368,31 @@ public sealed class JourneyPlayerCombat : MonoBehaviour
         if (CurrentHealth == 0) Respawn();
     }
 
-    private void Respawn()
+    public void TakeDrowningDamage(int damage, Transform drowningRespawnPoint)
+    {
+        // Holding the radial menu and ordinary hit immunity must not stop drowning.
+        if (!WorldGameplayActive || damage <= 0 || Time.time < environmentalProtectionUntil) return;
+        CurrentHealth = Mathf.Max(0, CurrentHealth - damage);
+        if (effectsSource != null && hurtSound != null) effectsSource.PlayOneShot(hurtSound);
+        RefreshHealth();
+        if (CurrentHealth == 0) Respawn(drowningRespawnPoint);
+    }
+
+    private void Respawn(Transform respawnOverride = null)
     {
         EndDefense();
         EndAttack();
         if (stoneController != null) stoneController.CancelForRespawn();
+        var swimming = player.GetComponent<JourneyPlayerSwimming>();
+        if (swimming != null) swimming.ResetForRespawn();
         foreach (JourneySkeletonEnemy enemy in JourneySkeletonEnemy.ActiveEnemies)
             if (enemy != null) enemy.ReturnHome();
-        player.Driver.SetPosition(startPoint.position);
-        player.Driver.SetRotation(startPoint.rotation);
+        Transform destination = respawnOverride != null ? respawnOverride : startPoint;
+        player.Driver.SetPosition(destination.position);
+        player.Driver.SetRotation(destination.rotation);
         CurrentHealth = Mathf.Max(1, maximumHealth);
         invulnerableUntil = Time.time + Mathf.Max(0f, respawnInvulnerability);
+        environmentalProtectionUntil = invulnerableUntil;
         RightScreenDragArea.ClearInput();
         JourneyMovementSettings.RefreshPuzzleInput();
         RefreshHealth();

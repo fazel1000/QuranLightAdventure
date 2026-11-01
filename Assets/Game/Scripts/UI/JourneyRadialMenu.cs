@@ -27,6 +27,8 @@ public sealed class JourneyRadialMenu : MonoBehaviour, IPointerDownHandler, IDra
     public CanvasGroup menuRoot;
     public Sprite slotBackground;
     public List<Item> items = new List<Item>();
+    [Tooltip("Selecting the currently equipped item again removes it. Selecting another owned item equips that item.")]
+    public bool toggleEquippedItems = true;
     [Tooltip("Allow holding and dragging the left mouse button in the Unity Editor and desktop builds. Touch input remains enabled.")]
     public bool enableDesktopMouseInput = true;
     [Min(10f)] public float ringRadius = 140f, itemSize = 72f, deadZone = 45f;
@@ -173,12 +175,15 @@ public sealed class JourneyRadialMenu : MonoBehaviour, IPointerDownHandler, IDra
         if (selection < 0 || selection >= items.Count || !Available(items[selection])) return;
         Item chosen = items[selection];
         var catalogItem = CatalogItem(chosen);
-        if (catalogItem != null && !equipmentInventory.TryEquip(catalogItem.id)) return;
+        if (catalogItem != null && !(toggleEquippedItems ? equipmentInventory.ToggleEquip(catalogItem.id) : equipmentInventory.TryEquip(catalogItem.id))) return;
         SelectedIndex = selection;
         if (catalogItem == null && string.IsNullOrEmpty(chosen.equipmentId) && chosen.equipmentObject != null)
+        {
+            bool remove = toggleEquippedItems && chosen.equipmentObject.activeSelf;
             for (int i = 0; i < items.Count; i++)
                 if (items[i] != null && string.IsNullOrEmpty(items[i].equipmentId) && items[i].equipmentObject != null && items[i].equipmentGroup == chosen.equipmentGroup)
-                    items[i].equipmentObject.SetActive(i == selection);
+                    items[i].equipmentObject.SetActive(i == selection && !remove);
+        }
         onSelection.Invoke(selection); items[selection].onSelected.Invoke();
     }
     private void Update()

@@ -34,6 +34,15 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
     public Character player;
     public JourneyPlayerCombat combat;
     public JourneyWardrobeRoom wardrobe;
+    [Header("Underwater equipment")]
+    public JourneyPlayerSwimming swimming;
+    [Tooltip("Temporarily hide the selected sword, shield and armor while the player's mouth is underwater.")]
+    public bool hideWeaponsAndArmorUnderwater = true;
+#if UNITY_EDITOR
+    [Header("Editor testing - one-time action")]
+    [Tooltip("Tick once to reset ALL paid equipment purchases and saved equipment selections for testing. Coins and language settings are kept. The tick clears itself.")]
+    public bool resetAllPurchasesInEditor;
+#endif
     [Header("Carrying and throwing stones")]
     public JourneyStoneThrowController stoneController;
     public bool hideSwordWhileUsingStone = true;
@@ -43,9 +52,22 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
     public event Action Changed;
     private readonly Dictionary<Category, string> equipped = new Dictionary<Category, string>();
     private Animator bound;
-    private bool initialized, scenePosesCaptured, swordHiddenForStone;
+    private bool initialized, scenePosesCaptured, swordHiddenForStone, hiddenUnderwater;
     private const string SelectedKey = "JourneyOfLight.Equipment.Selected.";
     public bool HasShieldItems => items.Exists(item => item != null && item.category == Category.Shield);
+    public bool HasSwordItems => items.Exists(item => item != null && item.category == Category.Sword);
+    public bool HasVisibleSword
+    {
+        get
+        {
+            Initialize();
+            foreach (var item in items)
+                if (item != null && item.category == Category.Sword && Owns(item) && IsEquipped(item))
+                    foreach (var attachment in item.attachments)
+                        if (attachment != null && attachment.root != null && attachment.root.gameObject.activeInHierarchy) return true;
+            return false;
+        }
+    }
     public BoxCollider EquippedShieldCollider
     {
         get { Initialize(); var item = items.Find(candidate => candidate != null && candidate.category == Category.Shield && IsEquipped(candidate) && Owns(candidate)); return item != null ? item.shieldCollider : null; }
@@ -54,6 +76,7 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
     {
         if (player == null) player = GetComponent<Character>();
         if (combat == null) combat = GetComponent<JourneyPlayerCombat>();
+        if (swimming == null) swimming = GetComponent<JourneyPlayerSwimming>();
         if (stoneController == null) stoneController = FindFirstObjectByType<JourneyStoneThrowController>(FindObjectsInactive.Include);
         CaptureSceneAttachmentPoses();
         if (player != null)
@@ -92,6 +115,38 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
         equipped[item.category] = item.id; SaveSelection(item.category);
         ApplySelections(); Changed?.Invoke(); return true;
     }
+    public bool ToggleEquip(string id)
+    {
+        Item item = Find(id);
+        if (!Owns(item)) return false;
+        if (IsEquipped(item)) Unequip(item.category);
+        else return TryEquip(id);
+        return true;
+    }
+    public bool HasVisibleScubaTank
+    {
+        get
+        {
+            Initialize();
+            foreach (var item in items)
+            {
+                if (item == null || item.category != Category.Scuba || !Owns(item) || !IsEquipped(item)) continue;
+                foreach (var attachment in item.attachments)
+                    if (attachment != null && attachment.root != null && attachment.root.gameObject.activeInHierarchy &&
+                        (attachment.bone == HumanBodyBones.Chest || attachment.bone == HumanBodyBones.UpperChest || attachment.bone == HumanBodyBones.Spine)) return true;
+            }
+            return false;
+        }
+    }
+#if UNITY_EDITOR
+    public void ResetEquipmentSelectionsForEditor()
+    {
+        foreach (Category category in Enum.GetValues(typeof(Category))) PlayerPrefs.DeleteKey(SelectedKey + category);
+        PlayerPrefs.Save(); initialized = false;
+        if (Application.isPlaying) { Initialize(); ApplySelections(); Changed?.Invoke(); }
+        else { Initialize(); ApplyVisibility(); }
+    }
+#endif
     public void Unequip(Category category)
     {
         Initialize(); equipped[category] = ""; SaveSelection(category);
@@ -161,12 +216,15 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
     }
     private void ApplyVisibility()
     {
-        swordHiddenForStone = hideSwordWhileUsingStone && stoneController != null &&
+        swordHiddenForStone = Application.isPlaying && hideSwordWhileUsingStone && stoneController != null &&
             stoneController.isActiveAndEnabled && stoneController.IsUsingStone;
+        hiddenUnderwater = Application.isPlaying && hideWeaponsAndArmorUnderwater && swimming != null &&
+            swimming.isActiveAndEnabled && swimming.IsUnderwaterNow;
         foreach (var item in items) if (item != null)
         {
             bool active = Owns(item) && equipped.TryGetValue(item.category, out string id) && id == item.id &&
-                !(swordHiddenForStone && item.category == Category.Sword);
+                !(swordHiddenForStone && item.category == Category.Sword) &&
+                !(hiddenUnderwater && (item.category == Category.Sword || item.category == Category.Shield || item.category == Category.Armor));
             foreach (var attachment in item.attachments)
                 if (attachment != null && attachment.root != null) attachment.root.gameObject.SetActive(active);
         }
@@ -177,7 +235,9 @@ public sealed class JourneyEquipmentInventory : MonoBehaviour
         if (player != null && player.Animim.Animator != bound) RefreshBindings();
         bool hide = hideSwordWhileUsingStone && stoneController != null &&
             stoneController.isActiveAndEnabled && stoneController.IsUsingStone;
-        if (hide != swordHiddenForStone) ApplyVisibility();
+        bool underwater = hideWeaponsAndArmorUnderwater && swimming != null && swimming.isActiveAndEnabled && swimming.IsUnderwaterNow;
+        if (hide != swordHiddenForStone || underwater != hiddenUnderwater)
+        { ApplyVisibility(); if (combat != null) combat.RefreshEquipmentReferences(); }
     }
     private void OnDestroy()
     {

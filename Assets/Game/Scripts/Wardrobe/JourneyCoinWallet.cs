@@ -6,6 +6,8 @@ using UnityEngine;
 public static class JourneyCoinWallet
 {
     private const string BalanceKey = "JourneyOfLight.Coins";
+    private const string PurchaseEpochKey = "JourneyOfLight.Equipment.PurchaseEpoch";
+    private static string purchaseEpoch;
     private static bool loaded;
     private static int balance;
     public static event Action Changed;
@@ -13,7 +15,7 @@ public static class JourneyCoinWallet
     private static void Load()
     { if (loaded) return; balance = Math.Max(0, PlayerPrefs.GetInt(BalanceKey, 0)); loaded = true; }
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() { loaded = false; balance = 0; Changed = null; }
+    private static void ResetStatics() { loaded = false; balance = 0; purchaseEpoch = null; Changed = null; }
     public static void Add(int amount)
     {
         if (amount <= 0) return;
@@ -32,7 +34,21 @@ public static class JourneyCoinWallet
         balance -= price; PlayerPrefs.SetInt(BalanceKey, balance);
         PlayerPrefs.SetInt(OwnershipKey(id), 1); PlayerPrefs.Save(); Changed?.Invoke(); return true;
     }
-    private static string OwnershipKey(string id) => "JourneyOfLight.Equipment.Owned." + id;
+    private static string OwnershipKey(string id)
+    {
+        if (purchaseEpoch == null) purchaseEpoch = PlayerPrefs.GetString(PurchaseEpochKey, "");
+        // An empty epoch reads the existing purchases without migrating or changing them.
+        return "JourneyOfLight.Equipment.Owned." + (purchaseEpoch.Length == 0 ? "" : purchaseEpoch + ".") + id;
+    }
+#if UNITY_EDITOR
+    public static void ResetAllPurchasesForEditor()
+    {
+        // Invalidate every old purchase, including items no longer in the scene's catalog.
+        purchaseEpoch = Guid.NewGuid().ToString("N");
+        PlayerPrefs.SetString(PurchaseEpochKey, purchaseEpoch);
+        PlayerPrefs.Save(); Changed?.Invoke();
+    }
+#endif
     public static string Format(int number)
     {
         string text = Math.Max(0, number).ToString(CultureInfo.InvariantCulture);
