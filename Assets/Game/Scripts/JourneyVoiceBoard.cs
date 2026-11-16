@@ -46,6 +46,20 @@ public sealed class JourneyVoiceBoard : MonoBehaviour
     public string RecordingLockedMessage => !IsActivated ?
         (hamdBoard.State == JourneyHamdBoard.CrystalState.Carried ? JourneyHamdBoard.CrystalCarriedMessage : JourneyHamdBoard.CrystalLockedMessage) : LockedMessage;
     public int VerseNumber => verseNumber;
+    public bool HasAssessedVerse(int number) => verseScores.ContainsKey(number);
+    public bool HasAssessedAllVerses
+    {
+        get
+        {
+            if (!IsActivated || surah == null || surah.verses == null || surah.verses.Length == 0) return false;
+            // Count every configured verse, including Bismillah, only once.
+            // A missing audio assignment must not silently remove a requirement.
+            foreach (var entry in surah.verses)
+                if (entry == null || entry.verseNumber < 1 || !surah.TryGetVerse(entry.verseNumber, out _) ||
+                    !verseScores.ContainsKey(entry.verseNumber)) return false;
+            return true;
+        }
+    }
     public bool CanChangeVerse => IsActivated && (voiceService == null || voiceService.CurrentBoard != this ||
         !(voiceService.IsRecording || voiceService.IsRecordPending || voiceService.IsAssessing));
     public bool HasPreviousVerse => AdjacentVerse(-1) > 0;

@@ -16,6 +16,7 @@ public sealed class JourneyStoneTower : MonoBehaviour
     [SerializeField, Min(0.1f)] private float distancePerBonus = 5f;
     [SerializeField, Min(0)] private int bonusPointsPerStep = 5;
     [SerializeField, Min(0)] private int maximumDistanceBonus = 100;
+    public int SuccessfulHits { get; private set; }
     public float LastHitDistance { get; private set; }
     public int LastAwardedPoints { get; private set; }
     public int LastHitMultiplier { get; private set; } = 1;
@@ -93,6 +94,7 @@ public sealed class JourneyStoneTower : MonoBehaviour
 #if (UNITY_ANDROID || UNITY_IOS) && !UNITY_EDITOR
         if (lightHaptic) CandyCoded.HapticFeedback.HapticFeedback.LightFeedback();
 #endif
+        SuccessfulHits++;
         onHit.Invoke(LastAwardedPoints);
         return true;
     }

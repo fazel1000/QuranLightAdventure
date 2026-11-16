@@ -489,6 +489,7 @@ MonoBehaviour:
   scoreReceiver: {fileID: 0}
   menu: {fileID: 0}
   interactionCamera: {fileID: 0}
+  hamdBoard: {fileID: 0}
   playCollider: {fileID: 1971963614391237401}
   playVisual: {fileID: 5370574005569508836}
   recordCollider: {fileID: 7880718874463871428}
@@ -568,12 +569,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   surah: {fileID: 11400000, guid: 0869a9afd3015174fbd78b79f27b8ac3, type: 2}
-  verseNumber: 3
+  verseNumber: 1
   verse: {fileID: 0}
   voiceService: {fileID: 0}
   scoreReceiver: {fileID: 0}
   menu: {fileID: 0}
   interactionCamera: {fileID: 0}
+  hamdBoard: {fileID: 0}
   playCollider: {fileID: 1971963614391237401}
   playVisual: {fileID: 5370574005569508836}
   recordCollider: {fileID: 7880718874463871428}

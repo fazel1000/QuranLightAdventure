@@ -3,6 +3,7 @@
     "com.eitan.sherpa-onnx-unity": "https://github.com/EitanWong/com.eitan.sherpa-onnx-unity.git#upm",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.ai.navigation": "2.0.9",
+    "com.unity.build-report-inspector": "file:E:/unity/Quran Crave Assets/BuildReportInspector/BuildReportInspector-master/com.unity.build-report-inspector",
     "com.unity.cinemachine": "2.10.4",
     "com.unity.collab-proxy": "2.13.6",
     "com.unity.ide.rider": "3.0.37",

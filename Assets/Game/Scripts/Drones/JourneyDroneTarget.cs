@@ -10,12 +10,14 @@ public sealed class JourneyDroneTarget : MonoBehaviour
     [Tooltip("Keep one looping smoke instance on this target until the target or scene is removed.")]
     public bool persistentSmoke = true;
     [Min(1f)] public float smokeLifetime = 45f;
+    public int SuccessfulHits { get; private set; }
     private bool awarded;
     private GameObject liveSmoke;
 
     public void Hit(LightBrushPuzzle wallet, Vector3 point, GameObject fallbackSmoke)
     {
         if ((!awardOnlyOnce || !awarded) && wallet != null) wallet.AddCoins(coinsPerImpact);
+        SuccessfulHits++;
         awarded = true;
         GameObject prefab = smokePrefab != null ? smokePrefab : fallbackSmoke;
         if (liveSmoke == null && prefab != null)
