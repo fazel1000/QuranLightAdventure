@@ -1,0 +1,359 @@
+From d50cb5c039aa90053effff122f938c61c3076276 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 20 Nov 2026 16:49:07 +0100
+Subject: [PATCH] Add mobile graphics quality toggle and default left drag
+
+---
+ .../Game/Scripts/JourneyGraphicsSettings.cs   | 266 ++++++++++++++++++
+ .../Scripts/JourneyGraphicsSettings.cs.meta   |  11 +
+ .../Game/Scripts/JourneyMovementSettings.cs   |   2 +-
+ .../First Grade of Elementary School.unity    |  25 ++
+ 4 files changed, 303 insertions(+), 1 deletion(-)
+ create mode 100644 Assets/Game/Scripts/JourneyGraphicsSettings.cs
+ create mode 100644 Assets/Game/Scripts/JourneyGraphicsSettings.cs.meta
+
+diff --git a/Assets/Game/Scripts/JourneyGraphicsSettings.cs b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+new file mode 100644
+index 0000000..252941c
+--- /dev/null
++++ b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+@@ -0,0 +1,266 @@
++using System;
++using System.Collections.Generic;
++using UnityEngine;
++using UnityEngine.Rendering;
++using UnityEngine.UI;
++using UnityEngine.Rendering.Universal;
++
++[DisallowMultipleComponent]
++[DefaultExecutionOrder(1100)]
++public sealed class JourneyGraphicsSettings : MonoBehaviour
++{
++    private const string PreferenceKey = "JourneyOfLight.Graphics.Mode";
++
++    [Header("Graphic Panel")]
++    [SerializeField] private Button highQualityButton;
++    [SerializeField] private Button mediumQualityButton;
++
++    [Header("Optional objects shown only in high quality")]
++    [Tooltip("Assign manually placed foliage or effects that should be hidden in Medium mode.")]
++    [SerializeField] private GameObject[] highQualityOnlyObjects = Array.Empty<GameObject>();
++
++    [Header("Medium terrain profile")]
++    [SerializeField, Min(20f)] private float mediumTreeDistance = 120f;
++    [SerializeField, Min(5f)] private float mediumTreeBillboardDistance = 30f;
++    [SerializeField, Min(0)] private int mediumTreeMaximumFullLodCount = 15;
++    [SerializeField, Min(10f)] private float mediumDetailDistance = 25f;
++    [SerializeField, Range(0f, 1f)] private float mediumDetailDensity = 0.2f;
++    [SerializeField, Min(0f)] private float mediumShadowDistance = 25f;
++    [SerializeField, Range(0.5f, 1f)] private float mediumRenderScale = 0.8f;
++    [SerializeField] private bool mediumDisablesTerrainShadows = true;
++
++    private readonly List<TerrainSnapshot> terrainSnapshots = new List<TerrainSnapshot>();
++    private UniversalRenderPipelineAsset pipelineAsset;
++    private float highShadowDistance;
++    private int highPixelLightCount;
++    private int highShadowCascades;
++    private int highAntiAliasing;
++    private float highLodBias;
++    private float highRenderScale = 1f;
++    private bool initialized;
++    private bool mediumMode;
++
++    public bool IsMediumMode => mediumMode;
++
++    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
++    private static void ResetStatics()
++    {
++        // PlayerPrefs remains persistent by design. This only prevents stale static state.
++    }
++
++    private void Awake()
++    {
++        CacheOriginalSettings();
++        ResolveButtons();
++        initialized = true;
++
++        bool savedMedium = PlayerPrefs.GetInt(PreferenceKey, 1) == 1;
++        ApplyMode(savedMedium, false);
++    }
++
++    private void OnEnable()
++    {
++        if (!initialized) return;
++        SubscribeButtons();
++    }
++
++    private void Start()
++    {
++        if (!initialized) return;
++        SubscribeButtons();
++        RefreshButtonState();
++    }
++
++    private void OnDisable()
++    {
++        if (highQualityButton != null) highQualityButton.onClick.RemoveListener(SelectHighQuality);
++        if (mediumQualityButton != null) mediumQualityButton.onClick.RemoveListener(SelectMediumQuality);
++    }
++
++    public void SelectHighQuality()
++    {
++        ApplyMode(false, true);
++    }
++
++    public void SelectMediumQuality()
++    {
++        ApplyMode(true, true);
++    }
++
++    public void ToggleQuality()
++    {
++        ApplyMode(!mediumMode, true);
++    }
++
++    private void ApplyMode(bool useMedium, bool savePreference)
++    {
++        mediumMode = useMedium;
++
++        if (useMedium)
++        {
++            ApplyMediumQuality();
++        }
++        else
++        {
++            ApplyHighQuality();
++        }
++
++        SetHighQualityOnlyObjectsActive(!useMedium);
++        RefreshButtonState();
++
++        if (savePreference)
++        {
++            PlayerPrefs.SetInt(PreferenceKey, useMedium ? 1 : 0);
++            PlayerPrefs.Save();
++        }
++    }
++
++    private void CacheOriginalSettings()
++    {
++        highShadowDistance = QualitySettings.shadowDistance;
++        highPixelLightCount = QualitySettings.pixelLightCount;
++        highShadowCascades = QualitySettings.shadowCascades;
++        highAntiAliasing = QualitySettings.antiAliasing;
++        highLodBias = QualitySettings.lodBias;
++        highRenderScale = 1f;
++
++        pipelineAsset = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
++        if (pipelineAsset != null) highRenderScale = pipelineAsset.renderScale;
++
++        terrainSnapshots.Clear();
++        foreach (Terrain terrain in Terrain.activeTerrains)
++        {
++            if (terrain == null) continue;
++            terrainSnapshots.Add(new TerrainSnapshot(terrain));
++        }
++    }
++
++    private void ResolveButtons()
++    {
++        if (highQualityButton == null)
++            highQualityButton = FindButton("Near", "High", "High Quality", "با کیفیت");
++        if (mediumQualityButton == null)
++            mediumQualityButton = FindButton("Away", "Medium", "Medium Quality", "کیفیت متوسط");
++    }
++
++    private Button FindButton(params string[] names)
++    {
++        Transform[] transforms = GetComponentsInChildren<Transform>(true);
++        foreach (Transform item in transforms)
++        {
++            foreach (string name in names)
++            {
++                if (!string.Equals(item.name, name, StringComparison.OrdinalIgnoreCase)) continue;
++                Button button = item.GetComponent<Button>();
++                if (button != null) return button;
++            }
++        }
++
++        return null;
++    }
++
++    private void SubscribeButtons()
++    {
++        if (highQualityButton != null)
++        {
++            highQualityButton.onClick.RemoveListener(SelectHighQuality);
++            highQualityButton.onClick.AddListener(SelectHighQuality);
++        }
++
++        if (mediumQualityButton != null)
++        {
++            mediumQualityButton.onClick.RemoveListener(SelectMediumQuality);
++            mediumQualityButton.onClick.AddListener(SelectMediumQuality);
++        }
++    }
++
++    private void ApplyMediumQuality()
++    {
++        QualitySettings.shadowDistance = mediumShadowDistance;
++        QualitySettings.pixelLightCount = 1;
++        QualitySettings.shadowCascades = 0;
++        QualitySettings.antiAliasing = 0;
++        QualitySettings.lodBias = Mathf.Min(highLodBias, 0.75f);
++
++        if (pipelineAsset != null) pipelineAsset.renderScale = mediumRenderScale;
++
++        foreach (Terrain terrain in Terrain.activeTerrains)
++        {
++            if (terrain == null) continue;
++            terrain.treeDistance = mediumTreeDistance;
++            terrain.treeBillboardDistance = mediumTreeBillboardDistance;
++            terrain.treeMaximumFullLODCount = mediumTreeMaximumFullLodCount;
++            terrain.detailObjectDistance = mediumDetailDistance;
++            terrain.detailObjectDensity = mediumDetailDensity;
++            terrain.drawInstanced = SystemInfo.supportsInstancing;
++            if (mediumDisablesTerrainShadows) terrain.shadowCastingMode = ShadowCastingMode.Off;
++        }
++    }
++
++    private void ApplyHighQuality()
++    {
++        QualitySettings.shadowDistance = highShadowDistance;
++        QualitySettings.pixelLightCount = highPixelLightCount;
++        QualitySettings.shadowCascades = highShadowCascades;
++        QualitySettings.antiAliasing = highAntiAliasing;
++        QualitySettings.lodBias = highLodBias;
++
++        if (pipelineAsset != null) pipelineAsset.renderScale = highRenderScale;
++
++        foreach (TerrainSnapshot snapshot in terrainSnapshots)
++        {
++            if (snapshot.Terrain == null) continue;
++            snapshot.Restore();
++        }
++    }
++
++    private void SetHighQualityOnlyObjectsActive(bool active)
++    {
++        if (highQualityOnlyObjects == null) return;
++        foreach (GameObject item in highQualityOnlyObjects)
++        {
++            if (item != null) item.SetActive(active);
++        }
++    }
++
++    private void RefreshButtonState()
++    {
++        if (highQualityButton != null) highQualityButton.interactable = mediumMode;
++        if (mediumQualityButton != null) mediumQualityButton.interactable = !mediumMode;
++    }
++
++    private sealed class TerrainSnapshot
++    {
++        public readonly Terrain Terrain;
++        private readonly float treeDistance;
++        private readonly float treeBillboardDistance;
++        private readonly int treeMaximumFullLodCount;
++        private readonly float detailObjectDistance;
++        private readonly float detailObjectDensity;
++        private readonly bool drawInstanced;
++        private readonly ShadowCastingMode shadowCastingMode;
++
++        public TerrainSnapshot(Terrain terrain)
++        {
++            Terrain = terrain;
++            treeDistance = terrain.treeDistance;
++            treeBillboardDistance = terrain.treeBillboardDistance;
++            treeMaximumFullLodCount = terrain.treeMaximumFullLODCount;
++            detailObjectDistance = terrain.detailObjectDistance;
++            detailObjectDensity = terrain.detailObjectDensity;
++            drawInstanced = terrain.drawInstanced;
++            shadowCastingMode = terrain.shadowCastingMode;
++        }
++
++        public void Restore()
++        {
++            Terrain.treeDistance = treeDistance;
++            Terrain.treeBillboardDistance = treeBillboardDistance;
++            Terrain.treeMaximumFullLODCount = treeMaximumFullLodCount;
++            Terrain.detailObjectDistance = detailObjectDistance;
++            Terrain.detailObjectDensity = detailObjectDensity;
++            Terrain.drawInstanced = drawInstanced;
++            Terrain.shadowCastingMode = shadowCastingMode;
++        }
++    }
++}
+diff --git a/Assets/Game/Scripts/JourneyGraphicsSettings.cs.meta b/Assets/Game/Scripts/JourneyGraphicsSettings.cs.meta
+new file mode 100644
+index 0000000..4ead379
+--- /dev/null
++++ b/Assets/Game/Scripts/JourneyGraphicsSettings.cs.meta
+@@ -0,0 +1,11 @@
++fileFormatVersion: 2
++guid: 7d1b8d5c2f9a4e6bb3c1a0f5d8e7c642
++MonoImporter:
++  externalObjects: {}
++  serializedVersion: 2
++  defaultReferences: []
++  executionOrder: 1100
++  icon: {instanceID: 0}
++  userData: 
++  assetBundleName: 
++  assetBundleVariant: 
+diff --git a/Assets/Game/Scripts/JourneyMovementSettings.cs b/Assets/Game/Scripts/JourneyMovementSettings.cs
+index f7b66ed..1f4c2e4 100644
+--- a/Assets/Game/Scripts/JourneyMovementSettings.cs
++++ b/Assets/Game/Scripts/JourneyMovementSettings.cs
+@@ -104,7 +104,7 @@ public sealed class JourneyMovementSettings : MonoBehaviour
+             return;
+         }
+ 
+-        useLeftDrag = PlayerPrefs.GetInt(PreferenceKey, 0) == 1;
++        useLeftDrag = PlayerPrefs.GetInt(PreferenceKey, 1) == 1;
+         hasFocus = Application.isFocused;
+         lastScreenSize = new Vector2(Screen.width, Screen.height);
+         CreateDragArea(canvas.rootCanvas);
+diff --git a/Assets/Scenes/First Grade of Elementary School.unity b/Assets/Scenes/First Grade of Elementary School.unity
+index 651e4de..9172ac6 100644
+--- a/Assets/Scenes/First Grade of Elementary School.unity	
++++ b/Assets/Scenes/First Grade of Elementary School.unity	
+@@ -30244,6 +30244,7 @@ GameObject:
+   - component: {fileID: 219948559}
+   - component: {fileID: 219948560}
+   - component: {fileID: 219948561}
++  - component: {fileID: 219948562}
+   m_Layer: 0
+   m_Name: MenuManager
+   m_TagString: Untagged
+@@ -282491,3 +282492,27 @@ SceneRoots:
+   - {fileID: 2072170359}
+   - {fileID: 725189370}
+   - {fileID: 671195695}
++
++--- !u!114 &219948562
++MonoBehaviour:
++  m_ObjectHideFlags: 0
++  m_CorrespondingSourceObject: {fileID: 0}
++  m_PrefabInstance: {fileID: 0}
++  m_PrefabAsset: {fileID: 0}
++  m_GameObject: {fileID: 219948555}
++  m_Enabled: 1
++  m_EditorHideFlags: 0
++  m_Script: {fileID: 11500000, guid: 7d1b8d5c2f9a4e6bb3c1a0f5d8e7c642, type: 3}
++  m_Name:
++  m_EditorClassIdentifier:
++  highQualityButton: {fileID: 120416012}
++  mediumQualityButton: {fileID: 1723803057}
++  highQualityOnlyObjects: []
++  mediumTreeDistance: 120
++  mediumTreeBillboardDistance: 30
++  mediumTreeMaximumFullLodCount: 15
++  mediumDetailDistance: 25
++  mediumDetailDensity: 0.2
++  mediumShadowDistance: 25
++  mediumRenderScale: 0.8
++  mediumDisablesTerrainShadows: 1
+-- 
+2.56.1
+

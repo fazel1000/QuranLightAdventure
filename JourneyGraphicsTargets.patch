@@ -1,0 +1,84 @@
+From 7360abbe7d54570330ce47707ce4acc188da1301 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 20 Nov 2026 17:17:19 +0100
+Subject: [PATCH] Expose terrain and foliage quality targets
+
+---
+ .../Game/Scripts/JourneyGraphicsSettings.cs   | 27 +++++++++++++++++--
+ .../First Grade of Elementary School.unity    |  1 +
+ 2 files changed, 26 insertions(+), 2 deletions(-)
+
+diff --git a/Assets/Game/Scripts/JourneyGraphicsSettings.cs b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+index 252941c..5e23c32 100644
+--- a/Assets/Game/Scripts/JourneyGraphicsSettings.cs
++++ b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+@@ -15,6 +15,10 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+     [SerializeField] private Button highQualityButton;
+     [SerializeField] private Button mediumQualityButton;
+ 
++    [Header("Terrain targets")]
++    [Tooltip("Assign the scene terrains here. Leave empty to use every active Terrain.")]
++    [SerializeField] private Terrain[] targetTerrains = Array.Empty<Terrain>();
++
+     [Header("Optional objects shown only in high quality")]
+     [Tooltip("Assign manually placed foliage or effects that should be hidden in Medium mode.")]
+     [SerializeField] private GameObject[] highQualityOnlyObjects = Array.Empty<GameObject>();
+@@ -128,7 +132,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+         if (pipelineAsset != null) highRenderScale = pipelineAsset.renderScale;
+ 
+         terrainSnapshots.Clear();
+-        foreach (Terrain terrain in Terrain.activeTerrains)
++        foreach (Terrain terrain in GetTargetTerrains())
+         {
+             if (terrain == null) continue;
+             terrainSnapshots.Add(new TerrainSnapshot(terrain));
+@@ -184,7 +188,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+ 
+         if (pipelineAsset != null) pipelineAsset.renderScale = mediumRenderScale;
+ 
+-        foreach (Terrain terrain in Terrain.activeTerrains)
++        foreach (Terrain terrain in GetTargetTerrains())
+         {
+             if (terrain == null) continue;
+             terrain.treeDistance = mediumTreeDistance;
+@@ -214,6 +218,25 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+         }
+     }
+ 
++    private IEnumerable<Terrain> GetTargetTerrains()
++    {
++        if (targetTerrains != null && targetTerrains.Length > 0)
++        {
++            for (int i = 0; i < targetTerrains.Length; i++)
++            {
++                if (targetTerrains[i] != null) yield return targetTerrains[i];
++            }
++
++            yield break;
++        }
++
++        Terrain[] activeTerrains = Terrain.activeTerrains;
++        for (int i = 0; i < activeTerrains.Length; i++)
++        {
++            if (activeTerrains[i] != null) yield return activeTerrains[i];
++        }
++    }
++
+     private void SetHighQualityOnlyObjectsActive(bool active)
+     {
+         if (highQualityOnlyObjects == null) return;
+diff --git a/Assets/Scenes/First Grade of Elementary School.unity b/Assets/Scenes/First Grade of Elementary School.unity
+index 9172ac6..4ee346a 100644
+--- a/Assets/Scenes/First Grade of Elementary School.unity	
++++ b/Assets/Scenes/First Grade of Elementary School.unity	
+@@ -282507,6 +282507,7 @@ MonoBehaviour:
+   m_EditorClassIdentifier:
+   highQualityButton: {fileID: 120416012}
+   mediumQualityButton: {fileID: 1723803057}
++  targetTerrains: []
+   highQualityOnlyObjects: []
+   mediumTreeDistance: 120
+   mediumTreeBillboardDistance: 30
+-- 
+2.56.1
+
