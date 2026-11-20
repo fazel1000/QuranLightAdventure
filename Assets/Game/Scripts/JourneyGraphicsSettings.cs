@@ -15,6 +15,10 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
     [SerializeField] private Button highQualityButton;
     [SerializeField] private Button mediumQualityButton;
 
+    [Header("Terrain targets")]
+    [Tooltip("Assign the scene terrains here. Leave empty to use every active Terrain.")]
+    [SerializeField] private Terrain[] targetTerrains = Array.Empty<Terrain>();
+
     [Header("Optional objects shown only in high quality")]
     [Tooltip("Assign manually placed foliage or effects that should be hidden in Medium mode.")]
     [SerializeField] private GameObject[] highQualityOnlyObjects = Array.Empty<GameObject>();
@@ -128,7 +132,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
         if (pipelineAsset != null) highRenderScale = pipelineAsset.renderScale;
 
         terrainSnapshots.Clear();
-        foreach (Terrain terrain in Terrain.activeTerrains)
+        foreach (Terrain terrain in GetTargetTerrains())
         {
             if (terrain == null) continue;
             terrainSnapshots.Add(new TerrainSnapshot(terrain));
@@ -184,7 +188,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
 
         if (pipelineAsset != null) pipelineAsset.renderScale = mediumRenderScale;
 
-        foreach (Terrain terrain in Terrain.activeTerrains)
+        foreach (Terrain terrain in GetTargetTerrains())
         {
             if (terrain == null) continue;
             terrain.treeDistance = mediumTreeDistance;
@@ -211,6 +215,25 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
         {
             if (snapshot.Terrain == null) continue;
             snapshot.Restore();
+        }
+    }
+
+    private IEnumerable<Terrain> GetTargetTerrains()
+    {
+        if (targetTerrains != null && targetTerrains.Length > 0)
+        {
+            for (int i = 0; i < targetTerrains.Length; i++)
+            {
+                if (targetTerrains[i] != null) yield return targetTerrains[i];
+            }
+
+            yield break;
+        }
+
+        Terrain[] activeTerrains = Terrain.activeTerrains;
+        for (int i = 0; i < activeTerrains.Length; i++)
+        {
+            if (activeTerrains[i] != null) yield return activeTerrains[i];
         }
     }
 
