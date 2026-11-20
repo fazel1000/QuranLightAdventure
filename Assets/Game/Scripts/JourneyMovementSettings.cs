@@ -104,7 +104,7 @@ public sealed class JourneyMovementSettings : MonoBehaviour
             return;
         }
 
-        useLeftDrag = PlayerPrefs.GetInt(PreferenceKey, 0) == 1;
+        useLeftDrag = PlayerPrefs.GetInt(PreferenceKey, 1) == 1;
         hasFocus = Application.isFocused;
         lastScreenSize = new Vector2(Screen.width, Screen.height);
         CreateDragArea(canvas.rootCanvas);

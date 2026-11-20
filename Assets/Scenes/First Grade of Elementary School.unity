@@ -30244,6 +30244,7 @@ GameObject:
   - component: {fileID: 219948559}
   - component: {fileID: 219948560}
   - component: {fileID: 219948561}
+  - component: {fileID: 219948562}
   m_Layer: 0
   m_Name: MenuManager
   m_TagString: Untagged
@@ -282491,3 +282492,27 @@ SceneRoots:
   - {fileID: 2072170359}
   - {fileID: 725189370}
   - {fileID: 671195695}
+
+--- !u!114 &219948562
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 219948555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d1b8d5c2f9a4e6bb3c1a0f5d8e7c642, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  highQualityButton: {fileID: 120416012}
+  mediumQualityButton: {fileID: 1723803057}
+  highQualityOnlyObjects: []
+  mediumTreeDistance: 120
+  mediumTreeBillboardDistance: 30
+  mediumTreeMaximumFullLodCount: 15
+  mediumDetailDistance: 25
+  mediumDetailDensity: 0.2
+  mediumShadowDistance: 25
+  mediumRenderScale: 0.8
+  mediumDisablesTerrainShadows: 1
