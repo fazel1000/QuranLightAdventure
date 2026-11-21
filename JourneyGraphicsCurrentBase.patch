@@ -1,0 +1,337 @@
+From 7360abbe7d54570330ce47707ce4acc188da1301 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Fri, 20 Nov 2026 17:17:19 +0100
+Subject: [PATCH 1/3] Expose terrain and foliage quality targets
+
+---
+ .../Game/Scripts/JourneyGraphicsSettings.cs   | 27 +++++++++++++++++--
+ 1 file changed, 25 insertions(+), 2 deletions(-)
+
+diff --git a/Assets/Game/Scripts/JourneyGraphicsSettings.cs b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+index 252941c..5e23c32 100644
+--- a/Assets/Game/Scripts/JourneyGraphicsSettings.cs
++++ b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+@@ -15,6 +15,10 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+     [SerializeField] private Button highQualityButton;
+     [SerializeField] private Button mediumQualityButton;
+ 
++    [Header("Terrain targets")]
++    [Tooltip("Assign the scene terrains here. Leave empty to use every active Terrain.")]
++    [SerializeField] private Terrain[] targetTerrains = Array.Empty<Terrain>();
++
+     [Header("Optional objects shown only in high quality")]
+     [Tooltip("Assign manually placed foliage or effects that should be hidden in Medium mode.")]
+     [SerializeField] private GameObject[] highQualityOnlyObjects = Array.Empty<GameObject>();
+@@ -128,7 +132,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+         if (pipelineAsset != null) highRenderScale = pipelineAsset.renderScale;
+ 
+         terrainSnapshots.Clear();
+-        foreach (Terrain terrain in Terrain.activeTerrains)
++        foreach (Terrain terrain in GetTargetTerrains())
+         {
+             if (terrain == null) continue;
+             terrainSnapshots.Add(new TerrainSnapshot(terrain));
+@@ -184,7 +188,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+ 
+         if (pipelineAsset != null) pipelineAsset.renderScale = mediumRenderScale;
+ 
+-        foreach (Terrain terrain in Terrain.activeTerrains)
++        foreach (Terrain terrain in GetTargetTerrains())
+         {
+             if (terrain == null) continue;
+             terrain.treeDistance = mediumTreeDistance;
+@@ -214,6 +218,25 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+         }
+     }
+ 
++    private IEnumerable<Terrain> GetTargetTerrains()
++    {
++        if (targetTerrains != null && targetTerrains.Length > 0)
++        {
++            for (int i = 0; i < targetTerrains.Length; i++)
++            {
++                if (targetTerrains[i] != null) yield return targetTerrains[i];
++            }
++
++            yield break;
++        }
++
++        Terrain[] activeTerrains = Terrain.activeTerrains;
++        for (int i = 0; i < activeTerrains.Length; i++)
++        {
++            if (activeTerrains[i] != null) yield return activeTerrains[i];
++        }
++    }
++
+     private void SetHighQualityOnlyObjectsActive(bool active)
+     {
+         if (highQualityOnlyObjects == null) return;
+-- 
+2.56.1
+
+
+From ad0aeb6e34311060300f998890061298332d8e35 Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 21 Nov 2026 08:31:47 +0100
+Subject: [PATCH 2/3] Stop environment wind in medium graphics mode
+
+---
+ .../Game/Scripts/JourneyGraphicsSettings.cs   | 76 +++++++++++++++++++
+ 1 file changed, 76 insertions(+)
+
+diff --git a/Assets/Game/Scripts/JourneyGraphicsSettings.cs b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+index 5e23c32..f4cb3d1 100644
+--- a/Assets/Game/Scripts/JourneyGraphicsSettings.cs
++++ b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+@@ -4,6 +4,7 @@ using UnityEngine;
+ using UnityEngine.Rendering;
+ using UnityEngine.UI;
+ using UnityEngine.Rendering.Universal;
++using TriForge;
+ 
+ [DisallowMultipleComponent]
+ [DefaultExecutionOrder(1100)]
+@@ -19,6 +20,10 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+     [Tooltip("Assign the scene terrains here. Leave empty to use every active Terrain.")]
+     [SerializeField] private Terrain[] targetTerrains = Array.Empty<Terrain>();
+ 
++    [Header("Wind")]
++    [Tooltip("Optional. If empty, all wind controllers in the scene are found automatically.")]
++    [SerializeField] private TF_FFE_WindController[] windControllers = Array.Empty<TF_FFE_WindController>();
++
+     [Header("Optional objects shown only in high quality")]
+     [Tooltip("Assign manually placed foliage or effects that should be hidden in Medium mode.")]
+     [SerializeField] private GameObject[] highQualityOnlyObjects = Array.Empty<GameObject>();
+@@ -34,6 +39,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+     [SerializeField] private bool mediumDisablesTerrainShadows = true;
+ 
+     private readonly List<TerrainSnapshot> terrainSnapshots = new List<TerrainSnapshot>();
++    private readonly List<WindSnapshot> windSnapshots = new List<WindSnapshot>();
+     private UniversalRenderPipelineAsset pipelineAsset;
+     private float highShadowDistance;
+     private int highPixelLightCount;
+@@ -137,6 +143,13 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+             if (terrain == null) continue;
+             terrainSnapshots.Add(new TerrainSnapshot(terrain));
+         }
++
++        windSnapshots.Clear();
++        foreach (TF_FFE_WindController controller in GetWindControllers())
++        {
++            if (controller == null) continue;
++            windSnapshots.Add(new WindSnapshot(controller));
++        }
+     }
+ 
+     private void ResolveButtons()
+@@ -199,6 +212,11 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+             terrain.drawInstanced = SystemInfo.supportsInstancing;
+             if (mediumDisablesTerrainShadows) terrain.shadowCastingMode = ShadowCastingMode.Off;
+         }
++
++        foreach (WindSnapshot snapshot in windSnapshots)
++        {
++            snapshot.Stop();
++        }
+     }
+ 
+     private void ApplyHighQuality()
+@@ -216,6 +234,11 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+             if (snapshot.Terrain == null) continue;
+             snapshot.Restore();
+         }
++
++        foreach (WindSnapshot snapshot in windSnapshots)
++        {
++            snapshot.Restore();
++        }
+     }
+ 
+     private IEnumerable<Terrain> GetTargetTerrains()
+@@ -237,6 +260,27 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+         }
+     }
+ 
++    private IEnumerable<TF_FFE_WindController> GetWindControllers()
++    {
++        if (windControllers != null && windControllers.Length > 0)
++        {
++            for (int i = 0; i < windControllers.Length; i++)
++            {
++                if (windControllers[i] != null) yield return windControllers[i];
++            }
++
++            yield break;
++        }
++
++        TF_FFE_WindController[] activeControllers = FindObjectsByType<TF_FFE_WindController>(
++            FindObjectsInactive.Include,
++            FindObjectsSortMode.None);
++        for (int i = 0; i < activeControllers.Length; i++)
++        {
++            if (activeControllers[i] != null) yield return activeControllers[i];
++        }
++    }
++
+     private void SetHighQualityOnlyObjectsActive(bool active)
+     {
+         if (highQualityOnlyObjects == null) return;
+@@ -286,4 +330,36 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+             Terrain.shadowCastingMode = shadowCastingMode;
+         }
+     }
++
++    private sealed class WindSnapshot
++    {
++        private readonly TF_FFE_WindController controller;
++        private readonly float windStrength;
++        private readonly float leafFlutterStrength;
++        private readonly float windSpeed;
++
++        public WindSnapshot(TF_FFE_WindController controller)
++        {
++            this.controller = controller;
++            windStrength = controller.WindStrength;
++            leafFlutterStrength = controller.LeafFlutterStrength;
++            windSpeed = controller.WindSpeed;
++        }
++
++        public void Stop()
++        {
++            if (controller == null) return;
++            controller.WindStrength = 0f;
++            controller.LeafFlutterStrength = 0f;
++            controller.WindSpeed = 0f;
++        }
++
++        public void Restore()
++        {
++            if (controller == null) return;
++            controller.WindStrength = windStrength;
++            controller.LeafFlutterStrength = leafFlutterStrength;
++            controller.WindSpeed = windSpeed;
++        }
++    }
+ }
+-- 
+2.56.1
+
+
+From 63e2519f7a8784587843e48b17f1431985713e4e Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Sat, 21 Nov 2026 08:45:32 +0100
+Subject: [PATCH 3/3] Pause distant animations and force wind off
+
+---
+ .../Game/Scripts/JourneyGraphicsSettings.cs   | 67 +++++++++++++++++++
+ 1 file changed, 67 insertions(+)
+
+diff --git a/Assets/Game/Scripts/JourneyGraphicsSettings.cs b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+index f4cb3d1..8e5b3d0 100644
+--- a/Assets/Game/Scripts/JourneyGraphicsSettings.cs
++++ b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+@@ -24,6 +24,12 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+     [Tooltip("Optional. If empty, all wind controllers in the scene are found automatically.")]
+     [SerializeField] private TF_FFE_WindController[] windControllers = Array.Empty<TF_FFE_WindController>();
+ 
++    [Header("Animation distance")]
++    [Tooltip("Animations farther than this distance from the player are paused in both quality modes.")]
++    [SerializeField, Min(1f)] private float animationPauseDistance = 40f;
++    [Tooltip("Optional. Leave empty to find the scene object named Player automatically.")]
++    [SerializeField] private Transform playerTransform;
++
+     [Header("Optional objects shown only in high quality")]
+     [Tooltip("Assign manually placed foliage or effects that should be hidden in Medium mode.")]
+     [SerializeField] private GameObject[] highQualityOnlyObjects = Array.Empty<GameObject>();
+@@ -40,6 +46,8 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+ 
+     private readonly List<TerrainSnapshot> terrainSnapshots = new List<TerrainSnapshot>();
+     private readonly List<WindSnapshot> windSnapshots = new List<WindSnapshot>();
++    private readonly Dictionary<Animator, float> animatorSpeeds = new Dictionary<Animator, float>();
++    private readonly Dictionary<Animation, float> legacyAnimationSpeeds = new Dictionary<Animation, float>();
+     private UniversalRenderPipelineAsset pipelineAsset;
+     private float highShadowDistance;
+     private int highPixelLightCount;
+@@ -49,6 +57,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+     private float highRenderScale = 1f;
+     private bool initialized;
+     private bool mediumMode;
++    private float nextAnimationScanTime;
+ 
+     public bool IsMediumMode => mediumMode;
+ 
+@@ -81,6 +90,27 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+         RefreshButtonState();
+     }
+ 
++    private void Update()
++    {
++        UpdateAnimationDistance();
++    }
++
++    private void LateUpdate()
++    {
++        // Wind controllers write these globals in Update. Writing zero here guarantees
++        // that medium mode wins even when several controllers are present.
++        if (mediumMode)
++        {
++            Shader.SetGlobalFloat("FFE_Wind_Strength", 0f);
++            Shader.SetGlobalFloat("FFE_Leaf_Flutter", 0f);
++            Shader.SetGlobalFloat("FFE_Wind_Speed", 0f);
++            Shader.SetGlobalFloat("_WindStrength", 0f);
++            Shader.SetGlobalFloat("_WindSpeed", 0f);
++            Shader.SetGlobalFloat("_LeavesWindStrength", 0f);
++            Shader.SetGlobalFloat("_LeavesWindSpeed", 0f);
++        }
++    }
++
+     private void OnDisable()
+     {
+         if (highQualityButton != null) highQualityButton.onClick.RemoveListener(SelectHighQuality);
+@@ -160,6 +190,43 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+             mediumQualityButton = FindButton("Away", "Medium", "Medium Quality", "کیفیت متوسط");
+     }
+ 
++    private void UpdateAnimationDistance()
++    {
++        if (Time.unscaledTime < nextAnimationScanTime) return;
++        nextAnimationScanTime = Time.unscaledTime + 0.25f;
++
++        if (playerTransform == null)
++        {
++            GameObject playerObject = GameObject.Find("Player");
++            if (playerObject != null) playerTransform = playerObject.transform;
++        }
++
++        if (playerTransform == null) return;
++        Vector3 playerPosition = playerTransform.position;
++        float maxDistanceSqr = animationPauseDistance * animationPauseDistance;
++
++        Animator[] animators = FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
++        foreach (Animator animator in animators)
++        {
++            if (animator == null || animator.transform.IsChildOf(playerTransform)) continue;
++            if (!animatorSpeeds.ContainsKey(animator)) animatorSpeeds.Add(animator, animator.speed);
++            animator.speed = (animator.transform.position - playerPosition).sqrMagnitude > maxDistanceSqr
++                ? 0f
++                : animatorSpeeds[animator];
++        }
++
++        Animation[] legacyAnimations = FindObjectsByType<Animation>(FindObjectsInactive.Include, FindObjectsSortMode.None);
++        foreach (Animation animation in legacyAnimations)
++        {
++            if (animation == null || animation.transform.IsChildOf(playerTransform)) continue;
++            if (!legacyAnimationSpeeds.ContainsKey(animation)) legacyAnimationSpeeds.Add(animation, animation[animation.clip != null ? animation.clip.name : string.Empty]?.speed ?? 1f);
++            AnimationState state = animation.clip != null ? animation[animation.clip.name] : null;
++            if (state != null) state.speed = (animation.transform.position - playerPosition).sqrMagnitude > maxDistanceSqr
++                ? 0f
++                : legacyAnimationSpeeds[animation];
++        }
++    }
++
+     private Button FindButton(params string[] names)
+     {
+         Transform[] transforms = GetComponentsInChildren<Transform>(true);
+-- 
+2.56.1
+
