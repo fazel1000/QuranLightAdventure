@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
 using UnityEngine.Rendering.Universal;
+using TriForge;
 
 [DisallowMultipleComponent]
 [DefaultExecutionOrder(1100)]
@@ -18,6 +19,10 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
     [Header("Terrain targets")]
     [Tooltip("Assign the scene terrains here. Leave empty to use every active Terrain.")]
     [SerializeField] private Terrain[] targetTerrains = Array.Empty<Terrain>();
+
+    [Header("Wind")]
+    [Tooltip("Optional. If empty, all wind controllers in the scene are found automatically.")]
+    [SerializeField] private TF_FFE_WindController[] windControllers = Array.Empty<TF_FFE_WindController>();
 
     [Header("Optional objects shown only in high quality")]
     [Tooltip("Assign manually placed foliage or effects that should be hidden in Medium mode.")]
@@ -34,6 +39,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
     [SerializeField] private bool mediumDisablesTerrainShadows = true;
 
     private readonly List<TerrainSnapshot> terrainSnapshots = new List<TerrainSnapshot>();
+    private readonly List<WindSnapshot> windSnapshots = new List<WindSnapshot>();
     private UniversalRenderPipelineAsset pipelineAsset;
     private float highShadowDistance;
     private int highPixelLightCount;
@@ -137,6 +143,13 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
             if (terrain == null) continue;
             terrainSnapshots.Add(new TerrainSnapshot(terrain));
         }
+
+        windSnapshots.Clear();
+        foreach (TF_FFE_WindController controller in GetWindControllers())
+        {
+            if (controller == null) continue;
+            windSnapshots.Add(new WindSnapshot(controller));
+        }
     }
 
     private void ResolveButtons()
@@ -199,6 +212,11 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
             terrain.drawInstanced = SystemInfo.supportsInstancing;
             if (mediumDisablesTerrainShadows) terrain.shadowCastingMode = ShadowCastingMode.Off;
         }
+
+        foreach (WindSnapshot snapshot in windSnapshots)
+        {
+            snapshot.Stop();
+        }
     }
 
     private void ApplyHighQuality()
@@ -214,6 +232,11 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
         foreach (TerrainSnapshot snapshot in terrainSnapshots)
         {
             if (snapshot.Terrain == null) continue;
+            snapshot.Restore();
+        }
+
+        foreach (WindSnapshot snapshot in windSnapshots)
+        {
             snapshot.Restore();
         }
     }
@@ -234,6 +257,27 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
         for (int i = 0; i < activeTerrains.Length; i++)
         {
             if (activeTerrains[i] != null) yield return activeTerrains[i];
+        }
+    }
+
+    private IEnumerable<TF_FFE_WindController> GetWindControllers()
+    {
+        if (windControllers != null && windControllers.Length > 0)
+        {
+            for (int i = 0; i < windControllers.Length; i++)
+            {
+                if (windControllers[i] != null) yield return windControllers[i];
+            }
+
+            yield break;
+        }
+
+        TF_FFE_WindController[] activeControllers = FindObjectsByType<TF_FFE_WindController>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < activeControllers.Length; i++)
+        {
+            if (activeControllers[i] != null) yield return activeControllers[i];
         }
     }
 
@@ -284,6 +328,38 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
             Terrain.detailObjectDensity = detailObjectDensity;
             Terrain.drawInstanced = drawInstanced;
             Terrain.shadowCastingMode = shadowCastingMode;
+        }
+    }
+
+    private sealed class WindSnapshot
+    {
+        private readonly TF_FFE_WindController controller;
+        private readonly float windStrength;
+        private readonly float leafFlutterStrength;
+        private readonly float windSpeed;
+
+        public WindSnapshot(TF_FFE_WindController controller)
+        {
+            this.controller = controller;
+            windStrength = controller.WindStrength;
+            leafFlutterStrength = controller.LeafFlutterStrength;
+            windSpeed = controller.WindSpeed;
+        }
+
+        public void Stop()
+        {
+            if (controller == null) return;
+            controller.WindStrength = 0f;
+            controller.LeafFlutterStrength = 0f;
+            controller.WindSpeed = 0f;
+        }
+
+        public void Restore()
+        {
+            if (controller == null) return;
+            controller.WindStrength = windStrength;
+            controller.LeafFlutterStrength = leafFlutterStrength;
+            controller.WindSpeed = windSpeed;
         }
     }
 }
