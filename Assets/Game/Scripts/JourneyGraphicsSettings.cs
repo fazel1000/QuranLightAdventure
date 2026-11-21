@@ -24,6 +24,12 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
     [Tooltip("Optional. If empty, all wind controllers in the scene are found automatically.")]
     [SerializeField] private TF_FFE_WindController[] windControllers = Array.Empty<TF_FFE_WindController>();
 
+    [Header("Animation distance")]
+    [Tooltip("Animations farther than this distance from the player are paused in both quality modes.")]
+    [SerializeField, Min(1f)] private float animationPauseDistance = 40f;
+    [Tooltip("Optional. Leave empty to find the scene object named Player automatically.")]
+    [SerializeField] private Transform playerTransform;
+
     [Header("Optional objects shown only in high quality")]
     [Tooltip("Assign manually placed foliage or effects that should be hidden in Medium mode.")]
     [SerializeField] private GameObject[] highQualityOnlyObjects = Array.Empty<GameObject>();
@@ -40,6 +46,8 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
 
     private readonly List<TerrainSnapshot> terrainSnapshots = new List<TerrainSnapshot>();
     private readonly List<WindSnapshot> windSnapshots = new List<WindSnapshot>();
+    private readonly Dictionary<Animator, float> animatorSpeeds = new Dictionary<Animator, float>();
+    private readonly Dictionary<Animation, float> legacyAnimationSpeeds = new Dictionary<Animation, float>();
     private UniversalRenderPipelineAsset pipelineAsset;
     private float highShadowDistance;
     private int highPixelLightCount;
@@ -49,6 +57,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
     private float highRenderScale = 1f;
     private bool initialized;
     private bool mediumMode;
+    private float nextAnimationScanTime;
 
     public bool IsMediumMode => mediumMode;
 
@@ -79,6 +88,27 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
         if (!initialized) return;
         SubscribeButtons();
         RefreshButtonState();
+    }
+
+    private void Update()
+    {
+        UpdateAnimationDistance();
+    }
+
+    private void LateUpdate()
+    {
+        // Wind controllers write these globals in Update. Writing zero here guarantees
+        // that medium mode wins even when several controllers are present.
+        if (mediumMode)
+        {
+            Shader.SetGlobalFloat("FFE_Wind_Strength", 0f);
+            Shader.SetGlobalFloat("FFE_Leaf_Flutter", 0f);
+            Shader.SetGlobalFloat("FFE_Wind_Speed", 0f);
+            Shader.SetGlobalFloat("_WindStrength", 0f);
+            Shader.SetGlobalFloat("_WindSpeed", 0f);
+            Shader.SetGlobalFloat("_LeavesWindStrength", 0f);
+            Shader.SetGlobalFloat("_LeavesWindSpeed", 0f);
+        }
     }
 
     private void OnDisable()
@@ -158,6 +188,43 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
             highQualityButton = FindButton("Near", "High", "High Quality", "با کیفیت");
         if (mediumQualityButton == null)
             mediumQualityButton = FindButton("Away", "Medium", "Medium Quality", "کیفیت متوسط");
+    }
+
+    private void UpdateAnimationDistance()
+    {
+        if (Time.unscaledTime < nextAnimationScanTime) return;
+        nextAnimationScanTime = Time.unscaledTime + 0.25f;
+
+        if (playerTransform == null)
+        {
+            GameObject playerObject = GameObject.Find("Player");
+            if (playerObject != null) playerTransform = playerObject.transform;
+        }
+
+        if (playerTransform == null) return;
+        Vector3 playerPosition = playerTransform.position;
+        float maxDistanceSqr = animationPauseDistance * animationPauseDistance;
+
+        Animator[] animators = FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Animator animator in animators)
+        {
+            if (animator == null || animator.transform.IsChildOf(playerTransform)) continue;
+            if (!animatorSpeeds.ContainsKey(animator)) animatorSpeeds.Add(animator, animator.speed);
+            animator.speed = (animator.transform.position - playerPosition).sqrMagnitude > maxDistanceSqr
+                ? 0f
+                : animatorSpeeds[animator];
+        }
+
+        Animation[] legacyAnimations = FindObjectsByType<Animation>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (Animation animation in legacyAnimations)
+        {
+            if (animation == null || animation.transform.IsChildOf(playerTransform)) continue;
+            if (!legacyAnimationSpeeds.ContainsKey(animation)) legacyAnimationSpeeds.Add(animation, animation[animation.clip != null ? animation.clip.name : string.Empty]?.speed ?? 1f);
+            AnimationState state = animation.clip != null ? animation[animation.clip.name] : null;
+            if (state != null) state.speed = (animation.transform.position - playerPosition).sqrMagnitude > maxDistanceSqr
+                ? 0f
+                : legacyAnimationSpeeds[animation];
+        }
     }
 
     private Button FindButton(params string[] names)
