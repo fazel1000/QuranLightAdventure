@@ -1,0 +1,92 @@
+diff --git a/Assets/Game/Scripts/Editor/JourneyTextureBuildOptimization.cs b/Assets/Game/Scripts/Editor/JourneyTextureBuildOptimization.cs
+index 32cf970..0064ddf 100644
+--- a/Assets/Game/Scripts/Editor/JourneyTextureBuildOptimization.cs
++++ b/Assets/Game/Scripts/Editor/JourneyTextureBuildOptimization.cs
+@@ -43,23 +43,19 @@ internal sealed class JourneyTextureBuildOptimization : IPreprocessBuildWithRepo
+         try
+         {
+             SetTerrainResolution(report.summary.platform);
+-            foreach (var guid in AssetDatabase.FindAssets("t:Material", new[] { "Assets" }))
++            int processed = 0;
++            foreach (string path in BuildDependencies())
+             {
+-                string path = AssetDatabase.GUIDToAssetPath(guid);
++                if (!path.StartsWith("Assets/", StringComparison.Ordinal)) continue;
+                 if (path.EndsWith(".mat", StringComparison.OrdinalIgnoreCase))
+                     StripMaterial(path);
++                else if (path.EndsWith(".terrainlayer", StringComparison.OrdinalIgnoreCase))
++                    StripLayer(path);
++                else continue;
++                ReleaseAfterBatch(++processed);
+             }
+-            foreach (var guid in AssetDatabase.FindAssets("t:TerrainLayer", new[] { "Assets" }))
+-            {
+-                string path = AssetDatabase.GUIDToAssetPath(guid);
+-                if (!path.EndsWith(".terrainlayer", StringComparison.OrdinalIgnoreCase)) continue;
+-                var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(path);
+-                if (!layer || (!layer.normalMapTexture && !layer.maskMapTexture)) continue;
+-                SaveAndBackup(layer, path);
+-                layer.normalMapTexture = null;
+-                layer.maskMapTexture = null;
+-                Save(layer);
+-            }
++            if (processed > 0) EditorUtility.UnloadUnusedAssetsImmediate();
++
+         }
+         catch
+         {
+@@ -68,6 +64,36 @@ internal sealed class JourneyTextureBuildOptimization : IPreprocessBuildWithRepo
+         }
+     }
+ 
++    private static string[] BuildDependencies()
++    {
++        var roots = new HashSet<string>();
++        foreach (var scene in EditorBuildSettings.scenes)
++            if (scene.enabled) roots.Add(scene.path);
++        foreach (var asset in PlayerSettings.GetPreloadedAssets())
++            if (asset) roots.Add(AssetDatabase.GetAssetPath(asset));
++        foreach (string path in AssetDatabase.GetAllAssetPaths())
++            if (path.StartsWith("Assets/", StringComparison.Ordinal) &&
++                path.IndexOf("/Resources/", StringComparison.OrdinalIgnoreCase) >= 0 &&
++                path.IndexOf("/Editor/", StringComparison.OrdinalIgnoreCase) < 0 &&
++                !AssetDatabase.IsValidFolder(path)) roots.Add(path);
++        return AssetDatabase.GetDependencies(new List<string>(roots).ToArray(), true);
++    }
++
++    private static void StripLayer(string path)
++    {
++        var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(path);
++        if (!layer || (!layer.normalMapTexture && !layer.maskMapTexture)) return;
++        SaveAndBackup(layer, path);
++        layer.normalMapTexture = null;
++        layer.maskMapTexture = null;
++        Save(layer);
++    }
++
++    private static void ReleaseAfterBatch(int count)
++    {
++        if (count % 8 == 0) EditorUtility.UnloadUnusedAssetsImmediate();
++    }
++
+     private static void SetTerrainResolution(BuildTarget target)
+     {
+         string path = AssetDatabase.GUIDToAssetPath(JourneyTerrainBuildSettings.instance.ResolveGuid(TerrainGuid));
+@@ -181,13 +207,16 @@ internal sealed class JourneyTextureBuildOptimization : IPreprocessBuildWithRepo
+     private static void Restore()
+     {
+         if (!Directory.Exists(Backups)) return;
++        int restored = 0;
+         foreach (string file in Directory.GetFiles(Backups, "*", SearchOption.AllDirectories))
+         {
+             if (file.EndsWith(".pending", StringComparison.Ordinal)) continue;
+             string path = file.Substring(Backups.Length + 1).Replace('\\', '/');
+             File.Copy(file, path, true);
+             string assetPath = path.EndsWith(".meta", StringComparison.Ordinal) ? path.Substring(0, path.Length - 5) : path;
+-            AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
++            AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
++            File.Delete(file);
++            ReleaseAfterBatch(++restored);
+         }
+         Directory.Delete(Backups, true);
+     }

@@ -22,6 +22,7 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
     private readonly HashSet<UnityEngine.Object> pauseOwners = new HashSet<UnityEngine.Object>();
     private readonly Dictionary<UnityEngine.Object, float> volumeMultipliers = new Dictionary<UnityEngine.Object, float>();
     private int currentIndex = -1;
+    private const string PausedKey = "JourneyOfLight.MusicPaused";
     private const string VolumeKey = "JourneyOfLight.MusicVolume";
     private bool playlistBuilt, started, pausedByUs, appPaused;
     private bool focus = true;
@@ -29,6 +30,13 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
     {
         if (musicSource == null) musicSource = GetComponent<AudioSource>();
         musicSource.playOnAwake = false; musicSource.loop = false; musicSource.spatialBlend = 0f;
+        bool existingPlayer = PlayerPrefs.HasKey("JourneyOfLight.FirstLanguageChosen") || PlayerPrefs.HasKey(VolumeKey);
+        UserPaused = PlayerPrefs.GetInt(PausedKey, existingPlayer ? 0 : 1) != 0;
+        if (!PlayerPrefs.HasKey(PausedKey))
+        {
+            PlayerPrefs.SetInt(PausedKey, UserPaused ? 1 : 0);
+            PlayerPrefs.Save();
+        }
         volume = Mathf.Clamp01(PlayerPrefs.GetFloat(VolumeKey, volume));
         ApplyOutputVolume(); musicSource.Stop();
         if (voiceService == null) voiceService = FindFirstObjectByType<JourneyVerseVoicePanel>(FindObjectsInactive.Include);
@@ -96,6 +104,8 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
     {
         if (UserPaused == value) return;
         UserPaused = value;
+        PlayerPrefs.SetInt(PausedKey, value ? 1 : 0);
+        PlayerPrefs.Save();
         if (value && musicSource != null) { musicSource.Pause(); pausedByUs = true; }
         Changed?.Invoke();
     }

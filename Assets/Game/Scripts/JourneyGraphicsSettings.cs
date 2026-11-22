@@ -145,6 +145,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
             ApplyHighQuality();
         }
 
+        GetComponent<JourneyTreeQuality>()?.Apply(useMedium);
         SetHighQualityOnlyObjectsActive(!useMedium);
         RefreshButtonState();
 

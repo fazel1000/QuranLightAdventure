@@ -1,0 +1,343 @@
+diff --git a/Assets/Game/Scripts/Editor/JourneyTreeLodSetup.cs b/Assets/Game/Scripts/Editor/JourneyTreeLodSetup.cs
+new file mode 100644
+index 0000000..d697550
+--- /dev/null
++++ b/Assets/Game/Scripts/Editor/JourneyTreeLodSetup.cs
+@@ -0,0 +1,91 @@
++using System;
++using System.Collections.Generic;
++using UnityEditor;
++using UnityEditor.SceneManagement;
++using UnityEngine;
++using UnityEngine.SceneManagement;
++
++internal static class JourneyTreeLodSetup
++{
++    private const string Folder = "Assets/Game/JourneyTreeLODs";
++
++    [MenuItem("Tools/Journey/Graphics/Register Selected Tree LODs")]
++    private static void Register()
++    {
++        var scene = SceneManager.GetActiveScene();
++        JourneyGraphicsSettings settings = null;
++        foreach (var root in scene.GetRootGameObjects())
++        {
++            settings = root.GetComponentInChildren<JourneyGraphicsSettings>(true);
++            if (settings) break;
++        }
++        if (!settings || Application.isPlaying)
++        {
++            Debug.LogWarning("Open the gameplay scene outside Play Mode first.");
++            return;
++        }
++        var sources = new HashSet<GameObject>();
++        foreach (var selected in Selection.gameObjects)
++        {
++            string path = AssetDatabase.GetAssetPath(selected);
++            if (string.IsNullOrEmpty(path))
++                path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(selected);
++            if (string.IsNullOrEmpty(path) || path.StartsWith(Folder + "/")) continue;
++            var source = AssetDatabase.LoadAssetAtPath<GameObject>(path);
++            var group = source ? source.GetComponent<LODGroup>() : null;
++            if (group && group.lodCount >= 2) sources.Add(source);
++        }
++        if (sources.Count == 0)
++        {
++            Debug.LogWarning("Select a tree prefab with an LODGroup on the root and at least two levels.");
++            return;
++        }
++        if (!AssetDatabase.IsValidFolder(Folder)) AssetDatabase.CreateFolder("Assets/Game", "JourneyTreeLODs");
++        var quality = settings.GetComponent<JourneyTreeQuality>();
++        if (!quality) quality = Undo.AddComponent<JourneyTreeQuality>(settings.gameObject);
++        Undo.RecordObject(quality, "Register tree LODs");
++        foreach (var source in sources)
++        {
++            string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(source));
++            var high = Bake(source, 1, Folder + "/" + guid + "_High.prefab");
++            var low = source.GetComponent<LODGroup>().lodCount > 2
++                ? Bake(source, 2, Folder + "/" + guid + "_Low.prefab") : high;
++            var tree = quality.trees.Find(t => t.original == source);
++            if (tree == null) { tree = new JourneyTreeQuality.Tree(); quality.trees.Add(tree); }
++            tree.original = source;
++            tree.high = high;
++            tree.low = low;
++        }
++        EditorUtility.SetDirty(quality);
++        EditorSceneManager.MarkSceneDirty(scene);
++        Debug.Log($"Registered {sources.Count} tree prefab(s). Save the scene.");
++    }
++
++    private static GameObject Bake(GameObject source, int first, string path)
++    {
++        var copy = UnityEngine.Object.Instantiate(source);
++        try
++        {
++            copy.name = source.name;
++            var group = copy.GetComponent<LODGroup>();
++            var lods = group.GetLODs();
++            var reduced = new LOD[lods.Length - first];
++            Array.Copy(lods, first, reduced, 0, reduced.Length);
++            var keep = new HashSet<Renderer>();
++            foreach (var lod in reduced) keep.UnionWith(lod.renderers);
++            group.SetLODs(reduced);
++            for (int i = 0; i < first; i++)
++                foreach (var renderer in lods[i].renderers)
++                {
++                    if (!renderer || keep.Contains(renderer)) continue;
++                    var filter = renderer.GetComponent<MeshFilter>();
++                    UnityEngine.Object.DestroyImmediate(renderer);
++                    if (filter && !filter.GetComponent<Renderer>()) UnityEngine.Object.DestroyImmediate(filter);
++                }
++            var result = PrefabUtility.SaveAsPrefabAsset(copy, path);
++            if (!result) throw new InvalidOperationException("Failed to create tree prefab: " + path);
++            return result;
++        }
++        finally { UnityEngine.Object.DestroyImmediate(copy); }
++    }
++}
+diff --git a/Assets/Game/Scripts/Editor/JourneyTreeLodSetup.cs.meta b/Assets/Game/Scripts/Editor/JourneyTreeLodSetup.cs.meta
+new file mode 100644
+index 0000000..4cf48d7
+--- /dev/null
++++ b/Assets/Game/Scripts/Editor/JourneyTreeLodSetup.cs.meta
+@@ -0,0 +1,2 @@
++fileFormatVersion: 2
++guid: fffe06927ff04eee94385fe724e5e4b7
+diff --git a/Assets/Game/Scripts/JourneyGraphicsSettings.cs b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+index 8e5b3d0..9e7e0ef 100644
+--- a/Assets/Game/Scripts/JourneyGraphicsSettings.cs
++++ b/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+@@ -145,6 +145,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
+             ApplyHighQuality();
+         }
+ 
++        GetComponent<JourneyTreeQuality>()?.Apply(useMedium);
+         SetHighQualityOnlyObjectsActive(!useMedium);
+         RefreshButtonState();
+ 
+diff --git a/Assets/Game/Scripts/JourneyMenuController.cs b/Assets/Game/Scripts/JourneyMenuController.cs
+index e218096..4e54046 100644
+--- a/Assets/Game/Scripts/JourneyMenuController.cs
++++ b/Assets/Game/Scripts/JourneyMenuController.cs
+@@ -38,8 +38,11 @@ public sealed class JourneyMenuController : MonoBehaviour
+     [Header("Game Creator Player (optional: found automatically)")]
+     [SerializeField] private global::GameCreator.Runtime.Characters.Character player;
+ 
+-    [Header("Single World - First Start Position")]
+-    [SerializeField] private Transform startPoint;
++    // Kept for the combat setup editor to recover its respawn marker.
++    [SerializeField, HideInInspector] private Transform startPoint;
++    private Vector3 sceneStartPosition;
++    private Quaternion sceneStartRotation;
++    private bool capturedScenePose;
+     public bool HasStartedGame { get; private set; }
+     public bool IsGameplayActive => HasStartedGame && !IsMenuOpen;
+ 
+@@ -76,7 +79,7 @@ public sealed class JourneyMenuController : MonoBehaviour
+     private void RefreshMenuMusicContext()
+     {
+         if (feedback == null) return;
+-        if (gameplayMusic != null && gameplayMusic.playInSettings && IsSettingsOpen) feedback.StopMenuMusic();
++        if (gameplayMusic != null && (gameplayMusic.UserPaused || (gameplayMusic.playInSettings && IsSettingsOpen))) feedback.StopMenuMusic();
+         else feedback.ShowMenuMusic(false);
+     }
+ 
+@@ -91,6 +94,7 @@ public sealed class JourneyMenuController : MonoBehaviour
+         feedback = GetComponent<JourneyUIFeedback>();
+         if (feedback == null) feedback = gameObject.AddComponent<JourneyUIFeedback>();
+         gameplayMusic = FindFirstObjectByType<JourneyShuffleMusic>(FindObjectsInactive.Include);
++        if (player != null) CaptureScenePose();
+         if (!ValidateReferences()) enabled = false;
+     }
+ 
+@@ -156,18 +160,27 @@ public sealed class JourneyMenuController : MonoBehaviour
+     // Compatibility for old Inspector events; there is no level selection screen.
+     public void ShowLevels() => StartGame();
+ 
++    private void CaptureScenePose()
++    {
++        sceneStartPosition = player.transform.position;
++        sceneStartRotation = player.transform.rotation;
++        capturedScenePose = true;
++    }
++
+     public void StartGame()
+     {
+         if (!isActiveAndEnabled || IsGameplayActive || firstLanguageOpen) return;
+         if (!HasStartedGame)
+         {
+-            if (startPoint == null || player == null || player.Driver == null)
+-            {
+-                Debug.LogError("JourneyMenuController: assign Start Point and the Game Creator Player before starting.", this);
+-                return;
+-            }
+-            player.Driver.SetPosition(startPoint.position);
+-            player.Driver.SetRotation(startPoint.rotation);
++            if (player == null || player.Driver == null) return;
++            if (!capturedScenePose) CaptureScenePose();
++            player.Driver.SetPosition(sceneStartPosition);
++            player.Driver.SetRotation(sceneStartRotation);
++            var presets = FindFirstObjectByType<JourneyCameraPresets>(FindObjectsInactive.Include);
++            var shot = presets != null ? presets.thirdPersonShot : null;
++            if (shot != null && shot.ShotType.GetSystem(GameCreator.Runtime.Cameras.ShotSystemThirdPerson.ID)
++                is GameCreator.Runtime.Cameras.ShotSystemThirdPerson orbit)
++                orbit.SetRotation(new Vector2(orbit.Pitch, sceneStartRotation.eulerAngles.y));
+             HasStartedGame = true;
+         }
+         HideMenusForGameplay();
+@@ -269,6 +282,7 @@ public sealed class JourneyMenuController : MonoBehaviour
+                     continue;
+ 
+                 player = character;
++                if (!capturedScenePose) CaptureScenePose();
+                 break;
+             }
+         }
+diff --git a/Assets/Game/Scripts/JourneyShuffleMusic.cs b/Assets/Game/Scripts/JourneyShuffleMusic.cs
+index 3aa68a7..9ec2112 100644
+--- a/Assets/Game/Scripts/JourneyShuffleMusic.cs
++++ b/Assets/Game/Scripts/JourneyShuffleMusic.cs
+@@ -22,6 +22,7 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
+     private readonly HashSet<UnityEngine.Object> pauseOwners = new HashSet<UnityEngine.Object>();
+     private readonly Dictionary<UnityEngine.Object, float> volumeMultipliers = new Dictionary<UnityEngine.Object, float>();
+     private int currentIndex = -1;
++    private const string PausedKey = "JourneyOfLight.MusicPaused";
+     private const string VolumeKey = "JourneyOfLight.MusicVolume";
+     private bool playlistBuilt, started, pausedByUs, appPaused;
+     private bool focus = true;
+@@ -29,6 +30,13 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
+     {
+         if (musicSource == null) musicSource = GetComponent<AudioSource>();
+         musicSource.playOnAwake = false; musicSource.loop = false; musicSource.spatialBlend = 0f;
++        bool existingPlayer = PlayerPrefs.HasKey("JourneyOfLight.FirstLanguageChosen") || PlayerPrefs.HasKey(VolumeKey);
++        UserPaused = PlayerPrefs.GetInt(PausedKey, existingPlayer ? 0 : 1) != 0;
++        if (!PlayerPrefs.HasKey(PausedKey))
++        {
++            PlayerPrefs.SetInt(PausedKey, UserPaused ? 1 : 0);
++            PlayerPrefs.Save();
++        }
+         volume = Mathf.Clamp01(PlayerPrefs.GetFloat(VolumeKey, volume));
+         ApplyOutputVolume(); musicSource.Stop();
+         if (voiceService == null) voiceService = FindFirstObjectByType<JourneyVerseVoicePanel>(FindObjectsInactive.Include);
+@@ -96,6 +104,8 @@ public sealed class JourneyShuffleMusic : MonoBehaviour
+     {
+         if (UserPaused == value) return;
+         UserPaused = value;
++        PlayerPrefs.SetInt(PausedKey, value ? 1 : 0);
++        PlayerPrefs.Save();
+         if (value && musicSource != null) { musicSource.Pause(); pausedByUs = true; }
+         Changed?.Invoke();
+     }
+diff --git a/Assets/Game/Scripts/JourneyTreeQuality.cs b/Assets/Game/Scripts/JourneyTreeQuality.cs
+new file mode 100644
+index 0000000..1334633
+--- /dev/null
++++ b/Assets/Game/Scripts/JourneyTreeQuality.cs
+@@ -0,0 +1,99 @@
++using System;
++using System.Collections.Generic;
++using UnityEngine;
++
++[DisallowMultipleComponent]
++public sealed class JourneyTreeQuality : MonoBehaviour
++{
++    [Serializable]
++    public class Tree
++    {
++        public GameObject original, high, low;
++    }
++
++    public List<Tree> trees = new List<Tree>();
++    private readonly Dictionary<LODGroup, LOD[]> groups = new Dictionary<LODGroup, LOD[]>();
++    private readonly Dictionary<Renderer, bool> enabledAtStart = new Dictionary<Renderer, bool>();
++    private readonly Dictionary<TerrainData, TreePrototype[]> terrains = new Dictionary<TerrainData, TreePrototype[]>();
++    private bool initialized;
++
++    private static Mesh MeshOf(Renderer renderer)
++    {
++        if (!renderer) return null;
++        var filter = renderer.GetComponent<MeshFilter>();
++        return filter ? filter.sharedMesh : null;
++    }
++
++    private void Initialize()
++    {
++        var meshes = new HashSet<Mesh>();
++        foreach (var tree in trees)
++        {
++            if (!tree.original || !tree.high || !tree.low) continue;
++            var group = tree.original.GetComponent<LODGroup>();
++            if (!group || group.lodCount < 2) continue;
++            foreach (var renderer in group.GetLODs()[0].renderers)
++                if (MeshOf(renderer)) meshes.Add(MeshOf(renderer));
++        }
++        foreach (var group in FindObjectsByType<LODGroup>(FindObjectsInactive.Include, FindObjectsSortMode.None))
++        {
++            if (group.gameObject.scene != gameObject.scene || group.lodCount < 2) continue;
++            var lods = group.GetLODs();
++            if (!Array.Exists(lods[0].renderers, r => meshes.Contains(MeshOf(r)))) continue;
++            groups.Add(group, lods);
++            foreach (var lod in lods)
++                foreach (var r in lod.renderers)
++                    if (r) enabledAtStart[r] = r.enabled;
++        }
++        foreach (var terrain in FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None))
++        {
++            var data = terrain.terrainData;
++            if (terrain.gameObject.scene != gameObject.scene || !data || terrains.ContainsKey(data)) continue;
++            var prototypes = data.treePrototypes;
++            if (Array.Exists(prototypes, p => trees.Exists(t => t.original == p.prefab && t.high && t.low)))
++                terrains.Add(data, prototypes);
++        }
++        initialized = true;
++    }
++
++    public void Apply(bool low)
++    {
++        if (!initialized) Initialize();
++        foreach (var entry in groups)
++        {
++            if (!entry.Key) continue;
++            var original = entry.Value;
++            int first = Mathf.Min(low ? 2 : 1, original.Length - 1);
++            var remaining = new LOD[original.Length - first];
++            Array.Copy(original, first, remaining, 0, remaining.Length);
++            var visible = new HashSet<Renderer>();
++            foreach (var lod in remaining) visible.UnionWith(lod.renderers);
++            entry.Key.SetLODs(remaining);
++            foreach (var lod in original)
++                foreach (var r in lod.renderers)
++                    if (r) r.enabled = enabledAtStart[r] && visible.Contains(r);
++        }
++        foreach (var entry in terrains)
++        {
++            if (!entry.Key) continue;
++            var prototypes = entry.Key.treePrototypes;
++            for (int i = 0; i < prototypes.Length && i < entry.Value.Length; i++)
++            {
++                var tree = trees.Find(t => t.original == entry.Value[i].prefab && t.high && t.low);
++                if (tree != null) prototypes[i].prefab = low ? tree.low : tree.high;
++            }
++            entry.Key.treePrototypes = prototypes;
++            entry.Key.RefreshPrototypes();
++        }
++    }
++
++    private void OnDestroy()
++    {
++        foreach (var entry in terrains)
++            if (entry.Key) { entry.Key.treePrototypes = entry.Value; entry.Key.RefreshPrototypes(); }
++        foreach (var entry in groups)
++            if (entry.Key) entry.Key.SetLODs(entry.Value);
++        foreach (var entry in enabledAtStart)
++            if (entry.Key) entry.Key.enabled = entry.Value;
++    }
++}
+diff --git a/Assets/Game/Scripts/JourneyTreeQuality.cs.meta b/Assets/Game/Scripts/JourneyTreeQuality.cs.meta
+new file mode 100644
+index 0000000..da005fc
+--- /dev/null
++++ b/Assets/Game/Scripts/JourneyTreeQuality.cs.meta
+@@ -0,0 +1,2 @@
++fileFormatVersion: 2
++guid: 32b9dcdf2c354941858381ce2157f375

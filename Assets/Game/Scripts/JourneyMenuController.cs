@@ -38,8 +38,11 @@ public sealed class JourneyMenuController : MonoBehaviour
     [Header("Game Creator Player (optional: found automatically)")]
     [SerializeField] private global::GameCreator.Runtime.Characters.Character player;
 
-    [Header("Single World - First Start Position")]
-    [SerializeField] private Transform startPoint;
+    // Kept for the combat setup editor to recover its respawn marker.
+    [SerializeField, HideInInspector] private Transform startPoint;
+    private Vector3 sceneStartPosition;
+    private Quaternion sceneStartRotation;
+    private bool capturedScenePose;
     public bool HasStartedGame { get; private set; }
     public bool IsGameplayActive => HasStartedGame && !IsMenuOpen;
 
@@ -76,7 +79,7 @@ public sealed class JourneyMenuController : MonoBehaviour
     private void RefreshMenuMusicContext()
     {
         if (feedback == null) return;
-        if (gameplayMusic != null && gameplayMusic.playInSettings && IsSettingsOpen) feedback.StopMenuMusic();
+        if (gameplayMusic != null && (gameplayMusic.UserPaused || (gameplayMusic.playInSettings && IsSettingsOpen))) feedback.StopMenuMusic();
         else feedback.ShowMenuMusic(false);
     }
 
@@ -91,6 +94,7 @@ public sealed class JourneyMenuController : MonoBehaviour
         feedback = GetComponent<JourneyUIFeedback>();
         if (feedback == null) feedback = gameObject.AddComponent<JourneyUIFeedback>();
         gameplayMusic = FindFirstObjectByType<JourneyShuffleMusic>(FindObjectsInactive.Include);
+        if (player != null) CaptureScenePose();
         if (!ValidateReferences()) enabled = false;
     }
 
@@ -156,18 +160,27 @@ public sealed class JourneyMenuController : MonoBehaviour
     // Compatibility for old Inspector events; there is no level selection screen.
     public void ShowLevels() => StartGame();
 
+    private void CaptureScenePose()
+    {
+        sceneStartPosition = player.transform.position;
+        sceneStartRotation = player.transform.rotation;
+        capturedScenePose = true;
+    }
+
     public void StartGame()
     {
         if (!isActiveAndEnabled || IsGameplayActive || firstLanguageOpen) return;
         if (!HasStartedGame)
         {
-            if (startPoint == null || player == null || player.Driver == null)
-            {
-                Debug.LogError("JourneyMenuController: assign Start Point and the Game Creator Player before starting.", this);
-                return;
-            }
-            player.Driver.SetPosition(startPoint.position);
-            player.Driver.SetRotation(startPoint.rotation);
+            if (player == null || player.Driver == null) return;
+            if (!capturedScenePose) CaptureScenePose();
+            player.Driver.SetPosition(sceneStartPosition);
+            player.Driver.SetRotation(sceneStartRotation);
+            var presets = FindFirstObjectByType<JourneyCameraPresets>(FindObjectsInactive.Include);
+            var shot = presets != null ? presets.thirdPersonShot : null;
+            if (shot != null && shot.ShotType.GetSystem(GameCreator.Runtime.Cameras.ShotSystemThirdPerson.ID)
+                is GameCreator.Runtime.Cameras.ShotSystemThirdPerson orbit)
+                orbit.SetRotation(new Vector2(orbit.Pitch, sceneStartRotation.eulerAngles.y));
             HasStartedGame = true;
         }
         HideMenusForGameplay();
@@ -269,6 +282,7 @@ public sealed class JourneyMenuController : MonoBehaviour
                     continue;
 
                 player = character;
+                if (!capturedScenePose) CaptureScenePose();
                 break;
             }
         }
