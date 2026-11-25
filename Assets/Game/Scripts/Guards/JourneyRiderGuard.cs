@@ -6,6 +6,8 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class JourneyRiderGuard : MonoBehaviour
 {
+    private const float UnifiedAnimationSleepDistance = 50f;
+    private const float UnifiedAnimationWakeDistance = 49f;
     [Serializable]
     public sealed class PatrolPoint
     {
@@ -119,7 +121,7 @@ public sealed class JourneyRiderGuard : MonoBehaviour
         nextDistanceCheck = Time.unscaledTime + Mathf.Max(0.1f, distanceCheckInterval) + UnityEngine.Random.Range(0f, 0.08f);
         Transform target = distanceTarget != null ? distanceTarget : Player();
         if (!sleepWhenDistant || target == null) { sleeping = false; return; }
-        float range = sleeping ? wakeDistance : Mathf.Max(wakeDistance, sleepDistance);
+        float range = sleeping ? UnifiedAnimationWakeDistance : UnifiedAnimationSleepDistance;
         sleeping = (target.position - transform.position).sqrMagnitude > range * range;
     }
     private void ApplyFreeze()

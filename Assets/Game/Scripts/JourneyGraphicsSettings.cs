@@ -10,6 +10,7 @@ using TriForge;
 [DefaultExecutionOrder(1100)]
 public sealed class JourneyGraphicsSettings : MonoBehaviour
 {
+    private const float UnifiedAnimationSleepDistance = 50f;
     private const string PreferenceKey = "JourneyOfLight.Graphics.Mode";
 
     [Header("Graphic Panel")]
@@ -72,6 +73,7 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
         CacheOriginalSettings();
         ResolveButtons();
         initialized = true;
+        animationPauseDistance = UnifiedAnimationSleepDistance;
 
         bool savedMedium = PlayerPrefs.GetInt(PreferenceKey, 1) == 1;
         ApplyMode(savedMedium, false);
@@ -204,12 +206,17 @@ public sealed class JourneyGraphicsSettings : MonoBehaviour
 
         if (playerTransform == null) return;
         Vector3 playerPosition = playerTransform.position;
-        float maxDistanceSqr = animationPauseDistance * animationPauseDistance;
+        float maxDistanceSqr = UnifiedAnimationSleepDistance * UnifiedAnimationSleepDistance;
 
         Animator[] animators = FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         foreach (Animator animator in animators)
         {
             if (animator == null || animator.transform.IsChildOf(playerTransform)) continue;
+            // Skeletons and rider guards own their Animator lifecycle. Letting the
+            // global distance pass write speed here can permanently preserve zero
+            // speed while their gameplay scripts are paused or waking them.
+            if (animator.GetComponentInParent<JourneySkeletonEnemy>(true) != null ||
+                animator.GetComponentInParent<JourneyRiderGuard>(true) != null) continue;
             if (!animatorSpeeds.ContainsKey(animator)) animatorSpeeds.Add(animator, animator.speed);
             animator.speed = (animator.transform.position - playerPosition).sqrMagnitude > maxDistanceSqr
                 ? 0f

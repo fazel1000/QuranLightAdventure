@@ -6,6 +6,7 @@ using UnityEngine.Events;
 [DisallowMultipleComponent, RequireComponent(typeof(NavMeshAgent))]
 public sealed class JourneySkeletonEnemy : MonoBehaviour
 {
+    private const float UnifiedAnimationSleepDistance = 50f;
     [Header("References")]
     public JourneyPlayerCombat playerCombat;
     public BoxCollider patrolArea;

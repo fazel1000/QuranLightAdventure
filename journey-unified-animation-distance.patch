@@ -1,0 +1,60 @@
+diff -ruN original/Assets/Game/Scripts/Combat/JourneySkeletonEnemy.cs modified/Assets/Game/Scripts/Combat/JourneySkeletonEnemy.cs
+--- original/Assets/Game/Scripts/Combat/JourneySkeletonEnemy.cs	2026-11-23 18:09:08.272324776 +0100
++++ modified/Assets/Game/Scripts/Combat/JourneySkeletonEnemy.cs	2026-11-23 18:09:08.326635531 +0100
+@@ -6,6 +6,7 @@
+ [DisallowMultipleComponent, RequireComponent(typeof(NavMeshAgent))]
+ public sealed class JourneySkeletonEnemy : MonoBehaviour
+ {
++    private const float UnifiedAnimationSleepDistance = 50f;
+     [Header("References")]
+     public JourneyPlayerCombat playerCombat;
+     public BoxCollider patrolArea;
+diff -ruN original/Assets/Game/Scripts/Guards/JourneyRiderGuard.cs modified/Assets/Game/Scripts/Guards/JourneyRiderGuard.cs
+--- original/Assets/Game/Scripts/Guards/JourneyRiderGuard.cs	2026-11-23 18:09:08.280324959 +0100
++++ modified/Assets/Game/Scripts/Guards/JourneyRiderGuard.cs	2026-11-23 18:09:08.326879778 +0100
+@@ -6,6 +6,8 @@
+ [DisallowMultipleComponent]
+ public sealed class JourneyRiderGuard : MonoBehaviour
+ {
++    private const float UnifiedAnimationSleepDistance = 50f;
++    private const float UnifiedAnimationWakeDistance = 49f;
+     [Serializable]
+     public sealed class PatrolPoint
+     {
+@@ -119,7 +121,7 @@
+         nextDistanceCheck = Time.unscaledTime + Mathf.Max(0.1f, distanceCheckInterval) + UnityEngine.Random.Range(0f, 0.08f);
+         Transform target = distanceTarget != null ? distanceTarget : Player();
+         if (!sleepWhenDistant || target == null) { sleeping = false; return; }
+-        float range = sleeping ? wakeDistance : Mathf.Max(wakeDistance, sleepDistance);
++        float range = sleeping ? UnifiedAnimationWakeDistance : UnifiedAnimationSleepDistance;
+         sleeping = (target.position - transform.position).sqrMagnitude > range * range;
+     }
+     private void ApplyFreeze()
+diff -ruN original/Assets/Game/Scripts/JourneyGraphicsSettings.cs modified/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+--- original/Assets/Game/Scripts/JourneyGraphicsSettings.cs	2026-11-23 18:09:08.256324409 +0100
++++ modified/Assets/Game/Scripts/JourneyGraphicsSettings.cs	2026-11-23 18:09:08.326465986 +0100
+@@ -10,6 +10,7 @@
+ [DefaultExecutionOrder(1100)]
+ public sealed class JourneyGraphicsSettings : MonoBehaviour
+ {
++    private const float UnifiedAnimationSleepDistance = 50f;
+     private const string PreferenceKey = "JourneyOfLight.Graphics.Mode";
+ 
+     [Header("Graphic Panel")]
+@@ -72,6 +73,7 @@
+         CacheOriginalSettings();
+         ResolveButtons();
+         initialized = true;
++        animationPauseDistance = UnifiedAnimationSleepDistance;
+ 
+         bool savedMedium = PlayerPrefs.GetInt(PreferenceKey, 1) == 1;
+         ApplyMode(savedMedium, false);
+@@ -204,7 +206,7 @@
+ 
+         if (playerTransform == null) return;
+         Vector3 playerPosition = playerTransform.position;
+-        float maxDistanceSqr = animationPauseDistance * animationPauseDistance;
++        float maxDistanceSqr = UnifiedAnimationSleepDistance * UnifiedAnimationSleepDistance;
+ 
+         Animator[] animators = FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+         foreach (Animator animator in animators)

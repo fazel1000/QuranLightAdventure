@@ -1,0 +1,15 @@
+diff -ruN original/Assets/Game/Scripts/JourneyGraphicsSettings.cs modified/Assets/Game/Scripts/JourneyGraphicsSettings.cs
+--- original/Assets/Game/Scripts/JourneyGraphicsSettings.cs	2026-11-23 18:13:44.590702824 +0100
++++ modified/Assets/Game/Scripts/JourneyGraphicsSettings.cs	2026-11-23 18:13:44.630758293 +0100
+@@ -210,6 +210,11 @@
+         foreach (Animator animator in animators)
+         {
+             if (animator == null || animator.transform.IsChildOf(playerTransform)) continue;
++            // Skeletons and rider guards own their Animator lifecycle. Letting the
++            // global distance pass write speed here can permanently preserve zero
++            // speed while their gameplay scripts are paused or waking them.
++            if (animator.GetComponentInParent<JourneySkeletonEnemy>(true) != null ||
++                animator.GetComponentInParent<JourneyRiderGuard>(true) != null) continue;
+             if (!animatorSpeeds.ContainsKey(animator)) animatorSpeeds.Add(animator, animator.speed);
+             animator.speed = (animator.transform.position - playerPosition).sqrMagnitude > maxDistanceSqr
+                 ? 0f
